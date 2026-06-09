@@ -310,7 +310,7 @@ function filtered() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   return records.filter(r => {
     const matchQ = !q || (r.id + r.client + r.name + r.code + r.shop).toLowerCase().includes(q);
-    const matchF = filterStatus === '全部' || r.buy === filterStatus || r.ship === filterStatus;
+    const matchF = filterStatus === '全部' || r.buy === filterStatus;
     return matchQ && matchF;
   });
 }
@@ -326,10 +326,8 @@ function renderStats() {
 }
 
 function renderFilters() {
-  const buyOpts = schema['購買狀態']?.options || [];
-  const shipOpts = schema['發貨狀態']?.options || [];
-  const all = ['全部', ...new Set([...buyOpts, ...shipOpts])];
-  document.getElementById('filterRow').innerHTML = all.map(s =>
+  const filters = ['全部', '未開始'];
+  document.getElementById('filterRow').innerHTML = filters.map(s =>
     `<span class="chip${filterStatus === s ? ' active' : ''}" onclick="setFilter('${s}')">${s}</span>`
   ).join('');
 }
@@ -348,7 +346,7 @@ function renderList() {
     return `<div class="card" onclick="openDetail('${r._pageId}')">
       <div class="card-top">
         <span class="card-id">${r.id}</span>
-        <div class="card-badges">${badge(r.buy)}${badge(r.ship)}</div>
+        <div class="card-badges">${r.buy ? `<span style="font-size:10px;color:var(--text-hint)">購買</span>${badge(r.buy)}` : ''}${r.ship ? `<span style="font-size:10px;color:var(--text-hint)">發貨</span>${badge(r.ship)}` : ''}</div>
       </div>
       <div class="card-name">${r.name || '（未填商品）'}</div>
       <div class="card-meta">${[r.client, r.shop, r.shipto].filter(Boolean).join(' · ')} · ¥${Number(r.price || 0).toLocaleString()} × ${r.qty || 1}</div>
