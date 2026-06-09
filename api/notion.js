@@ -169,14 +169,14 @@ function byId(props, id) {
   return Object.values(props).find(v => v.id === id || v.id === decodeURIComponent(id));
 }
 
-function pageToRecord(page, packTitles) {
+function pageToRecord(page, packTitles = {}) {
+  if (!page || !page.properties) return { _pageId: '', id: '', name: '', client: '', code: '', qty: 0, price: 0, quote: 0, total: 0, shop: '', shipto: '', type: '', attr: '', submit: '', done: '', pay: '', ship: '', buy: '', pack: '', _packIds: [] };
   const p = page.properties || {};
   const g = (id) => extractValue(byId(p, id));
 
-  // 出貨單: relation field R_%3D%3A
   const packProp = byId(p, 'R_%3D%3A');
   const packIds = packProp?.relation || [];
-  const pack = packIds.map(r => packTitles[r.id] || '').filter(Boolean).join(', ');
+  const pack = packIds.map(r => (packTitles[r.id] || '')).filter(Boolean).join(', ');
 
   return {
     _pageId: page.id,
