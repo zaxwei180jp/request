@@ -204,22 +204,39 @@ function pageToRecord(page, packTitles = {}) {
 
 function recordToProperties(r) {
   const props = {};
-  if (r.notionId)  props['title'] = { title: [{ text: { content: r.notionId || '' } }] };
-  if (r.client !== undefined) props['委託人']  = { rich_text: [{ text: { content: r.client || '' } }] };
-  if (r.name   !== undefined) props['商品名稱'] = { rich_text: [{ text: { content: r.name   || '' } }] };
-  if (r.code   !== undefined) props['商品編號'] = { rich_text: [{ text: { content: r.code   || '' } }] };
-  if (r.qty    !== undefined) props['數量']    = { number: Number(r.qty)   || 0 };
-  if (r.price  !== undefined) props['¥單價']   = { number: Number(r.price) || 0 };
-  if (r.quote  !== undefined) props['報價']    = { number: Number(r.quote) || 0 };
-  if (r.shop)   props['商店']     = { select: { name: r.shop   } };
-  if (r.shipto) props['發貨客戶'] = { select: { name: r.shipto } };
-  if (r.type)   props['商品類型'] = { select: { name: r.type   } };
-  if (r.attr)   props['購買屬性'] = { select: { name: r.attr   } };
-  if (r.submit) props['提交日期'] = { date: { start: r.submit } };
-  if (r.done)   props['完成日期'] = { date: { start: r.done   } };
-  if (r.pay)    props['付款狀態'] = { status: { name: r.pay  } };
-  if (r.ship)   props['發貨狀態'] = { status: { name: r.ship } };
-  if (r.buy)    props['購買狀態'] = { status: { name: r.buy  } };
-  // 出貨單是 relation，新增/編輯時略過（需在 Notion 直接關聯）
+  // Use property IDs to avoid encoding issues with Chinese field names
+  if (r.notionId !== undefined && r.notionId) {
+    props['title'] = { title: [{ text: { content: r.notionId || '' } }] };
+  }
+  // 委託人 A:>i rich_text
+  if (r.client !== undefined) props['A:>i']  = { rich_text: [{ text: { content: r.client || '' } }] };
+  // 商品名稱 Tcrm rich_text
+  if (r.name   !== undefined) props['Tcrm']  = { rich_text: [{ text: { content: r.name   || '' } }] };
+  // 商品編號 `AG[ rich_text
+  if (r.code   !== undefined) props['`AG[']  = { rich_text: [{ text: { content: r.code   || '' } }] };
+  // 數量 Poce number
+  if (r.qty    !== undefined) props['Poce']  = { number: Number(r.qty)   || 0 };
+  // ¥單價 UISe number
+  if (r.price  !== undefined) props['UISe']  = { number: Number(r.price) || 0 };
+  // 報價 cAk\ number
+  if (r.quote  !== undefined) props['cAk\\'] = { number: Number(r.quote) || 0 };
+  // 商店 SAe` select
+  if (r.shop)   props['SAe`']  = { select: { name: r.shop   } };
+  // 發貨客戶 TtRR select
+  if (r.shipto) props['TtRR']  = { select: { name: r.shipto } };
+  // 商品類型 ]yoq select
+  if (r.type)   props[']yoq']  = { select: { name: r.type   } };
+  // 購買屬性 _o~{ select
+  if (r.attr)   props['_o~{']  = { select: { name: r.attr   } };
+  // 提交日期 uF:Y date
+  if (r.submit) props['uF:Y']  = { date: { start: r.submit } };
+  // 完成日期 ExlH date
+  if (r.done)   props['ExlH']  = { date: { start: r.done   } };
+  // 付款狀態 ZFWL status
+  if (r.pay)    props['ZFWL']  = { status: { name: r.pay  } };
+  // 發貨狀態 ko~P status
+  if (r.ship)   props['ko~P']  = { status: { name: r.ship } };
+  // 購買狀態 lA:_ status
+  if (r.buy)    props['lA:_']  = { status: { name: r.buy  } };
   return props;
 }
