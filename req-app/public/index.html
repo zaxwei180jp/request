@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>需求單管理</title>
+<style>
+  :root {
+    --purple:#534AB7;--purple-light:#EEEDFE;
+    --bg:#F5F5F7;--bg-card:#fff;--bg-secondary:#f0f0f5;
+    --text:#1a1a1a;--text-muted:#6e6e80;--text-hint:#a0a0b0;
+    --border:rgba(0,0,0,0.10);--border-mid:rgba(0,0,0,0.18);
+    --radius:14px;--radius-sm:8px;--shadow:0 1px 4px rgba(0,0,0,0.07);
+    --b-done-bg:#E1F5EE;--b-done-c:#0F6E56;
+    --b-pending-bg:#FAEEDA;--b-pending-c:#854F0B;
+    --b-shipped-bg:#FAECE7;--b-shipped-c:#993C1D;
+    --b-cancel-bg:#FCEBEB;--b-cancel-c:#A32D2D;
+    --b-arrived-bg:#E6F1FB;--b-arrived-c:#185FA5;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#111114;--bg-card:#1c1c22;--bg-secondary:#26262e;
+      --text:#f0f0f5;--text-muted:#9090a8;--text-hint:#55556a;
+      --border:rgba(255,255,255,0.09);--border-mid:rgba(255,255,255,0.16);
+      --shadow:0 1px 4px rgba(0,0,0,0.4);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto}
+
+  .header{background:var(--bg-card);border-bottom:0.5px solid var(--border);padding:16px;position:sticky;top:0;z-index:50}
+  .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .header-title{font-size:20px;font-weight:600}
+  .header-sub{font-size:13px;color:var(--text-muted);margin-top:2px}
+  .btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--radius-sm);padding:9px 16px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .btn-add:active{opacity:0.85;transform:scale(0.97)}
+  .btn-refresh{background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:8px 10px;cursor:pointer;color:var(--text-muted);display:flex;align-items:center}
+  .btn-refresh:active{transform:scale(0.95)}
+  .top-right{display:flex;gap:8px;align-items:center}
+
+  .search-wrap{display:flex;align-items:center;gap:8px;background:var(--bg-secondary);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px}
+  .search-wrap svg{flex-shrink:0;opacity:0.45}
+  .search-wrap input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
+  .search-wrap input::placeholder{color:var(--text-hint)}
+
+  .filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+  .filter-row::-webkit-scrollbar{display:none}
+  .chip{border:0.5px solid var(--border-mid);border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;white-space:nowrap;background:var(--bg-card);color:var(--text-muted)}
+  .chip.active{background:var(--purple);border-color:var(--purple);color:#fff}
+
+  .stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px}
+  .stat-item{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center}
+  .stat-num{font-size:20px;font-weight:600;color:var(--purple)}
+  .stat-label{font-size:10px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
+
+  .list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius);padding:15px 16px;cursor:pointer;box-shadow:var(--shadow)}
+  .card:active{opacity:0.75}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .card-id{font-size:13px;font-weight:600;color:var(--purple)}
+  .card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:55%}
+  .card-name{font-size:16px;font-weight:500;margin-bottom:4px;line-height:1.3}
+  .card-meta{font-size:13px;color:var(--text-muted);margin-bottom:8px}
+  .card-footer{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .tag{display:inline-block;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:500;background:var(--bg-secondary);color:var(--text-muted)}
+  .tag-date{font-size:11px;color:var(--text-hint)}
+
+  .badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;gap:4px}
+  .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:0.7;display:inline-block}
+  .b-done{background:var(--b-done-bg);color:var(--b-done-c)}
+  .b-pending{background:var(--b-pending-bg);color:var(--b-pending-c)}
+  .b-shipped{background:var(--b-shipped-bg);color:var(--b-shipped-c)}
+  .b-cancel{background:var(--b-cancel-bg);color:var(--b-cancel-c)}
+  .b-arrived{background:var(--b-arrived-bg);color:var(--b-arrived-c)}
+
+  .empty{text-align:center;padding:64px 16px;color:var(--text-muted)}
+  .empty-icon{font-size:48px;margin-bottom:12px}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1}
+
+  .loading-bar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:999;transition:width .3s;width:0}
+
+  /* FORM MODAL */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100;align-items:flex-end}
+  .overlay.open{display:flex}
+  .sheet{background:var(--bg-card);border-radius:20px 20px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:slideUp .25s ease}
+  @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .sheet-handle{width:36px;height:4px;background:var(--border-mid);border-radius:4px;margin:12px auto 0}
+  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
+  .sheet-title{font-size:17px;font-weight:600}
+  .btn-close{background:var(--bg-secondary);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted)}
+  .form-body{padding:0 16px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em}
+  .field input,.field select,.field textarea{width:100%;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:11px 13px;font-size:15px;background:var(--bg-card);color:var(--text);outline:none;-webkit-appearance:none}
+  .field input:focus,.field select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,0.12)}
+  .field textarea{resize:none;height:70px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .form-actions{display:flex;gap:10px;margin-top:20px}
+  .btn-cancel-f{flex:1;background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:13px;font-size:15px;cursor:pointer;color:var(--text-muted)}
+  .btn-save{flex:2;background:var(--purple);border:none;border-radius:var(--radius-sm);padding:13px;font-size:15px;font-weight:600;cursor:pointer;color:#fff}
+  .btn-save:disabled{opacity:0.6}
+  .section-label{font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.08em;margin:20px 0 12px;padding-bottom:8px;border-bottom:0.5px solid var(--border)}
+
+  /* DETAIL */
+  .detail-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
+  .detail-overlay.open{display:block;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+  .detail-nav{background:var(--bg-card);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+  .btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:4px;font-size:15px;font-weight:500}
+  .detail-id-title{font-size:17px;font-weight:600}
+  .detail-body{padding:14px;display:flex;flex-direction:column;gap:10px;padding-bottom:30px}
+  .d-card{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .d-card-header{padding:12px 16px 8px;font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;border-bottom:0.5px solid var(--border)}
+  .d-row{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:0.5px solid var(--border)}
+  .d-row:last-child{border-bottom:none}
+  .d-label{font-size:14px;color:var(--text-muted)}
+  .d-val{font-size:14px;font-weight:500;text-align:right;max-width:58%}
+  .d-val-big{font-size:18px;font-weight:600;color:var(--purple)}
+  .detail-actions{display:flex;gap:10px;padding:0 14px 24px}
+  .btn-edit{flex:1;background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:13px;font-size:15px;cursor:pointer;color:var(--text);font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn-del{flex:1;background:#FCEBEB;border:0.5px solid #F7C1C1;border-radius:var(--radius-sm);padding:13px;font-size:15px;cursor:pointer;color:#A32D2D;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
+</style>
+</head>
+<body>
+
+<div class="loading-bar" id="loadingBar"></div>
+<div class="toast" id="toast"></div>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-title">需求單</div>
+      <div class="header-sub" id="headerSub">載入中…</div>
+    </div>
+    <div class="top-right">
+      <button class="btn-refresh" onclick="loadRecords()" aria-label="重新整理">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <button class="btn-add" onclick="openAdd()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增
+      </button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll()">
+  </div>
+  <div class="filter-row" id="filterRow"></div>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+<div class="list" id="list"></div>
+
+<!-- FORM -->
+<div class="overlay" id="formOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" id="formTitle">新增需求單</span>
+      <button class="btn-close" onclick="closeForm()" aria-label="關閉">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="form-body">
+      <div class="section-label">基本資訊</div>
+      <div class="row2">
+        <div class="field"><label>委託人</label><input id="f_client" placeholder="姓名"></div>
+        <div class="field"><label>商品編號</label><input id="f_code" placeholder="選填"></div>
+      </div>
+      <div class="field"><label>商品名稱</label><input id="f_name" placeholder="商品名稱"></div>
+      <div class="row2">
+        <div class="field"><label>商店</label><input id="f_shop" placeholder="商店名稱"></div>
+        <div class="field"><label>發貨客戶</label><input id="f_shipto" placeholder="W-82C"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>商品類型</label>
+          <select id="f_type"><option>普貨</option><option>特貨</option><option>敏感貨</option></select>
+        </div>
+        <div class="field"><label>購買屬性</label>
+          <select id="f_attr"><option>正常</option><option>預購</option><option>補貨</option></select>
+        </div>
+      </div>
+
+      <div class="section-label">金額 & 數量</div>
+      <div class="row2">
+        <div class="field"><label>數量</label><input id="f_qty" type="number" min="1" placeholder="1"></div>
+        <div class="field"><label>¥ 單價</label><input id="f_price" type="number" placeholder="0"></div>
+      </div>
+      <div class="field"><label>報價</label><input id="f_quote" type="number" placeholder="選填"></div>
+
+      <div class="section-label">狀態</div>
+      <div class="row2">
+        <div class="field"><label>購買狀態</label>
+          <select id="f_buy"><option>待處理</option><option>完成</option><option>取消</option></select>
+        </div>
+        <div class="field"><label>付款狀態</label>
+          <select id="f_pay"><option>待付款</option><option>完成</option></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>發貨狀態</label>
+          <select id="f_ship"><option>待出貨</option><option>已出貨</option><option>已送達</option></select>
+        </div>
+        <div class="field"><label>出貨單</label><input id="f_pack" placeholder="PACK001"></div>
+      </div>
+
+      <div class="section-label">日期</div>
+      <div class="row2">
+        <div class="field"><label>提交日期</label><input id="f_submit" type="date"></div>
+        <div class="field"><label>完成日期</label><input id="f_done" type="date"></div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-cancel-f" onclick="closeForm()">取消</button>
+        <button class="btn-save" id="btnSave" onclick="saveRecord()">儲存到 Notion</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-nav">
+    <button class="btn-back" onclick="closeDetail()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      返回
+    </button>
+    <span class="detail-id-title" id="d_id"></span>
+  </div>
+  <div class="detail-body" id="d_body"></div>
+  <div class="detail-actions">
+    <button class="btn-edit" onclick="openEdit()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      編輯
+    </button>
+    <button class="btn-del" onclick="deleteRecord()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      刪除
+    </button>
+  </div>
+</div>
+
+<script>
+const API = '/api/notion';
+let records = [];
+let filterStatus = '全部';
+let editingPageId = null;
+let viewingId = null;
+
+function setLoading(pct) {
+  const bar = document.getElementById('loadingBar');
+  bar.style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => bar.style.width = '0', 400);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function loadRecords() {
+  setLoading(30);
+  try {
+    const res = await fetch(API + '?action=list');
+    setLoading(80);
+    if (!res.ok) throw new Error('API 錯誤 ' + res.status);
+    records = await res.json();
+    setLoading(100);
+    renderAll();
+    document.getElementById('headerSub').textContent = `共 ${records.length} 筆 · 剛剛同步`;
+  } catch(e) {
+    setLoading(100);
+    showToast('⚠️ 載入失敗：' + e.message);
+    document.getElementById('headerSub').textContent = '載入失敗';
+  }
+}
+
+function badgeClass(s) {
+  return {完成:'b-done',待處理:'b-pending',已出貨:'b-shipped',已送達:'b-arrived',取消:'b-cancel',待付款:'b-pending',待出貨:'b-pending'}[s] || 'b-pending';
+}
+function badge(s) { return s ? `<span class="badge ${badgeClass(s)}">${s}</span>` : ''; }
+
+function filtered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  return records.filter(r => {
+    const matchQ = !q || (r.id+r.client+r.name+r.code+r.shop).toLowerCase().includes(q);
+    const matchF = filterStatus === '全部' || r.buy === filterStatus || r.ship === filterStatus;
+    return matchQ && matchF;
+  });
+}
+
+function renderStats() {
+  const total = records.length;
+  const pending = records.filter(r => r.buy === '待處理').length;
+  const shipped = records.filter(r => r.ship === '已出貨' || r.ship === '已送達').length;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-item"><div class="stat-num">${total}</div><div class="stat-label">總筆數</div></div>
+    <div class="stat-item"><div class="stat-num">${pending}</div><div class="stat-label">待處理</div></div>
+    <div class="stat-item"><div class="stat-num">${shipped}</div><div class="stat-label">已出貨</div></div>`;
+}
+
+function renderFilters() {
+  const fs = ['全部','待處理','完成','已出貨','已送達','取消'];
+  document.getElementById('filterRow').innerHTML = fs.map(s =>
+    `<span class="chip${filterStatus===s?' active':''}" onclick="setFilter('${s}')">${s}</span>`
+  ).join('');
+}
+
+function setFilter(s) { filterStatus = s; renderAll(); }
+
+function renderList() {
+  const data = filtered();
+  const el = document.getElementById('list');
+  if (!data.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>沒有符合的需求單</p></div>`;
+    return;
+  }
+  el.innerHTML = data.map(r => {
+    const total = (Number(r.price||0) * Number(r.qty||1)).toLocaleString();
+    return `<div class="card" onclick="openDetail('${r._pageId}')">
+      <div class="card-top">
+        <span class="card-id">${r.id}</span>
+        <div class="card-badges">${badge(r.buy)}${badge(r.ship)}</div>
+      </div>
+      <div class="card-name">${r.name || '（未填商品）'}</div>
+      <div class="card-meta">${[r.client, r.shop, r.shipto].filter(Boolean).join(' · ')} · ¥${Number(r.price||0).toLocaleString()} × ${r.qty||1}</div>
+      <div class="card-footer">
+        ${r.pack ? `<span class="tag">${r.pack}</span>` : ''}
+        ${r.type ? `<span class="tag">${r.type}</span>` : ''}
+        ${r.submit ? `<span class="tag-date">提交 ${r.submit}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAll() { renderStats(); renderFilters(); renderList(); }
+
+function openAdd() {
+  editingPageId = null;
+  document.getElementById('formTitle').textContent = '新增需求單';
+  ['client','name','code','qty','price','quote','shop','shipto','pack','done','submit'].forEach(k => document.getElementById('f_'+k).value = '');
+  ['buy','pay','ship','type','attr'].forEach(k => document.getElementById('f_'+k).selectedIndex = 0);
+  document.getElementById('f_submit').value = new Date().toISOString().slice(0,10);
+  document.getElementById('formOverlay').classList.add('open');
+}
+
+function openEdit() {
+  const r = records.find(x => x._pageId === viewingId);
+  if (!r) return;
+  editingPageId = r._pageId;
+  document.getElementById('formTitle').textContent = '編輯需求單';
+  ['client','name','code','qty','price','quote','shop','shipto','pack','done','submit'].forEach(k => document.getElementById('f_'+k).value = r[k] != null ? r[k] : '');
+  ['buy','pay','ship','type','attr'].forEach(k => {
+    const sel = document.getElementById('f_'+k);
+    for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].value === r[k]) { sel.selectedIndex = i; break; } }
+  });
+  document.getElementById('formOverlay').classList.add('open');
+}
+
+function closeForm() { document.getElementById('formOverlay').classList.remove('open'); }
+
+async function saveRecord() {
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = '儲存中…';
+  const r = {
+    client: document.getElementById('f_client').value.trim(),
+    name: document.getElementById('f_name').value.trim(),
+    code: document.getElementById('f_code').value.trim(),
+    qty: document.getElementById('f_qty').value || 1,
+    price: document.getElementById('f_price').value || 0,
+    quote: document.getElementById('f_quote').value || 0,
+    shop: document.getElementById('f_shop').value.trim(),
+    shipto: document.getElementById('f_shipto').value.trim(),
+    type: document.getElementById('f_type').value,
+    attr: document.getElementById('f_attr').value,
+    submit: document.getElementById('f_submit').value,
+    buy: document.getElementById('f_buy').value,
+    pay: document.getElementById('f_pay').value,
+    ship: document.getElementById('f_ship').value,
+    pack: document.getElementById('f_pack').value.trim(),
+    done: document.getElementById('f_done').value,
+  };
+  try {
+    if (editingPageId) {
+      await fetch(`${API}?action=update&id=${editingPageId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r) });
+      showToast('✅ 已更新');
+    } else {
+      await fetch(`${API}?action=create`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(r) });
+      showToast('✅ 已新增到 Notion');
+    }
+    closeForm();
+    await loadRecords();
+    if (editingPageId) openDetail(editingPageId);
+  } catch(e) {
+    showToast('❌ 儲存失敗：' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '儲存到 Notion';
+}
+
+function openDetail(pageId) {
+  viewingId = pageId;
+  const r = records.find(x => x._pageId === pageId);
+  if (!r) return;
+  document.getElementById('d_id').textContent = r.id;
+  const total = (Number(r.price||0) * Number(r.qty||1)).toLocaleString();
+  document.getElementById('d_body').innerHTML = `
+    <div class="d-card">
+      <div class="d-card-header">基本資訊</div>
+      <div class="d-row"><span class="d-label">委託人</span><span class="d-val">${r.client||'—'}</span></div>
+      <div class="d-row"><span class="d-label">商品名稱</span><span class="d-val">${r.name||'—'}</span></div>
+      <div class="d-row"><span class="d-label">商品編號</span><span class="d-val">${r.code||'—'}</span></div>
+      <div class="d-row"><span class="d-label">商店</span><span class="d-val">${r.shop||'—'}</span></div>
+      <div class="d-row"><span class="d-label">發貨客戶</span><span class="d-val">${r.shipto||'—'}</span></div>
+      <div class="d-row"><span class="d-label">商品類型</span><span class="d-val">${r.type||'—'}</span></div>
+      <div class="d-row"><span class="d-label">購買屬性</span><span class="d-val">${r.attr||'—'}</span></div>
+    </div>
+    <div class="d-card">
+      <div class="d-card-header">狀態</div>
+      <div class="d-row"><span class="d-label">購買狀態</span><span class="d-val">${badge(r.buy)}</span></div>
+      <div class="d-row"><span class="d-label">付款狀態</span><span class="d-val">${badge(r.pay)}</span></div>
+      <div class="d-row"><span class="d-label">發貨狀態</span><span class="d-val">${badge(r.ship)}</span></div>
+      <div class="d-row"><span class="d-label">出貨單</span><span class="d-val">${r.pack||'—'}</span></div>
+    </div>
+    <div class="d-card">
+      <div class="d-card-header">金額</div>
+      <div class="d-row"><span class="d-label">數量</span><span class="d-val">${r.qty||1}</span></div>
+      <div class="d-row"><span class="d-label">¥ 單價</span><span class="d-val">¥${Number(r.price||0).toLocaleString()}</span></div>
+      <div class="d-row"><span class="d-label">報價</span><span class="d-val">¥${Number(r.quote||0).toLocaleString()}</span></div>
+      <div class="d-row"><span class="d-label">總價</span><span class="d-val d-val-big">¥${total}</span></div>
+    </div>
+    <div class="d-card">
+      <div class="d-card-header">日期</div>
+      <div class="d-row"><span class="d-label">提交日期</span><span class="d-val">${r.submit||'—'}</span></div>
+      <div class="d-row"><span class="d-label">完成日期</span><span class="d-val">${r.done||'—'}</span></div>
+    </div>`;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
+
+async function deleteRecord() {
+  const r = records.find(x => x._pageId === viewingId);
+  if (!r || !confirm(`確定要刪除「${r.id}」嗎？`)) return;
+  try {
+    await fetch(`${API}?action=delete&id=${viewingId}`, { method: 'DELETE' });
+    showToast('🗑️ 已刪除');
+    closeDetail();
+    await loadRecords();
+  } catch(e) {
+    showToast('❌ 刪除失敗');
+  }
+}
+
+loadRecords();
+</script>
+</body>
+</html>
