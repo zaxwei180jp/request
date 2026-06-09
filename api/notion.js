@@ -204,7 +204,7 @@ function pageToRecord(page, packTitles) {
 
 function recordToProperties(r) {
   const props = {};
-  if (r.notionId)  props['需求單編號'] = { title: [{ text: { content: r.notionId || '' } }] };
+  if (r.notionId)  props['title'] = { title: [{ text: { content: r.notionId || '' } }] };
   if (r.client !== undefined) props['委託人']  = { rich_text: [{ text: { content: r.client || '' } }] };
   if (r.name   !== undefined) props['商品名稱'] = { rich_text: [{ text: { content: r.name   || '' } }] };
   if (r.code   !== undefined) props['商品編號'] = { rich_text: [{ text: { content: r.code   || '' } }] };

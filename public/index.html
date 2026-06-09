@@ -440,20 +440,25 @@ async function saveRecord() {
     done:   document.getElementById('f_done').value,
   };
   try {
+    const savedPageId = editingPageId;
     if (editingPageId) {
-      await fetch(`${API}?action=update&id=${editingPageId}`, {
+      const res = await fetch(`${API}?action=update&id=${editingPageId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r)
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       showToast('✅ 已更新');
     } else {
-      await fetch(`${API}?action=create`, {
+      const res = await fetch(`${API}?action=create`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r)
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       showToast('✅ 已新增到 Notion');
     }
     closeForm();
     await loadRecords();
-    if (editingPageId) openDetail(editingPageId);
+    if (savedPageId) openDetail(savedPageId);
   } catch(e) {
     showToast('❌ 儲存失敗：' + e.message);
   }
