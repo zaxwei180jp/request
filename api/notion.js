@@ -19,32 +19,13 @@ const cors = {
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-// Property ID map (from schema debug)
-// 商店        SAe`   select
-// 發貨客戶    TtRR   select
-// 付款狀態    ZFWL   status
-// 商品類型    ]yoq   select  ← was wrong before
-// 購買屬性    _o~{   select
-// 發貨狀態    ko~P   status
-// 購買狀態    lA:_   status
-// 委託人      A:>i   rich_text
-// 商品名稱    Tcrm   rich_text
-// 商品編號    `AG[   rich_text
-// 數量        Poce   number
-// ¥單價       UISe   number
-// 報價        cAk\   number
-// 總價        cECx   formula
-// 提交日期    uF:Y   date
-// 完成日期    ExlH   date
-// 顯示        yHX}   formula
-
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
   try {
-    // SCHEMA — return select/status options with decoded names
+    // SCHEMA
     if (req.method === 'GET' && action === 'schema') {
       const res = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}`, {
         headers: notionHeaders(),
@@ -52,7 +33,6 @@ export default async function handler(req) {
       const data = await res.json();
       if (!data.properties) return json({ error: 'Schema error', detail: data }, 500);
 
-      // Use ID to identify fields instead of names
       const idToKey = {
         'SAe%60': '商店',
         'TtRR':   '發貨客戶',
@@ -76,24 +56,56 @@ export default async function handler(req) {
       return json(schema);
     }
 
-    // LIST
+    // LIST — fetch all with pagination, resolve relations
     if (req.method === 'GET' && action === 'list') {
-      const res = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
-        method: 'POST',
-        headers: notionHeaders(),
-        body: JSON.stringify({ page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] }),
-      });
-      const data = await res.json();
-      if (!data.results) return json({ error: 'Notion API error', detail: data }, 500);
-      if (url.searchParams.get('debug') === '1' && data.results.length > 0) {
-        const props = data.results[0].properties;
+      let allResults = [];
+      let cursor = undefined;
+      while (true) {
+        const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+        if (cursor) body.start_cursor = cursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+          method: 'POST',
+          headers: notionHeaders(),
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) return json({ error: 'Notion API error', detail: data }, 500);
+        allResults = allResults.concat(data.results);
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+
+      if (url.searchParams.get('debug') === '1' && allResults.length > 0) {
+        const props = allResults[0].properties;
         const mapped = {};
         for (const [k, v] of Object.entries(props)) {
           mapped[k] = { id: v.id, type: v.type, value: extractValue(v) };
         }
         return json(mapped);
       }
-      return json(data.results.map(pageToRecord));
+
+      // Collect all unique relation page IDs for 出貨單 (R_%3D%3A)
+      const packPageIds = new Set();
+      for (const page of allResults) {
+        const packProp = Object.values(page.properties).find(v => v.id === 'R_%3D%3A');
+        if (packProp?.relation?.length) {
+          packProp.relation.forEach(r => packPageIds.add(r.id));
+        }
+      }
+
+      // Fetch relation page titles in parallel (batch up to 20)
+      const packTitles = {};
+      const ids = [...packPageIds];
+      await Promise.all(ids.map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const titleProp = Object.values(page.properties || {}).find(v => v.type === 'title');
+          packTitles[id] = titleProp?.title?.[0]?.plain_text || '';
+        } catch { packTitles[id] = ''; }
+      }));
+
+      return json(allResults.map(page => pageToRecord(page, packTitles)));
     }
 
     // CREATE
@@ -106,7 +118,7 @@ export default async function handler(req) {
       });
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message, detail: data }, 500);
-      return json(pageToRecord(data));
+      return json(pageToRecord(data, {}));
     }
 
     // UPDATE
@@ -119,7 +131,7 @@ export default async function handler(req) {
         body: JSON.stringify({ properties: recordToProperties(body) }),
       });
       const data = await res.json();
-      return json(pageToRecord(data));
+      return json(pageToRecord(data, {}));
     }
 
     // DELETE
@@ -157,9 +169,14 @@ function byId(props, id) {
   return Object.values(props).find(v => v.id === id || v.id === decodeURIComponent(id));
 }
 
-function pageToRecord(page) {
+function pageToRecord(page, packTitles) {
   const p = page.properties || {};
   const g = (id) => extractValue(byId(p, id));
+
+  // 出貨單: relation field R_%3D%3A
+  const packProp = byId(p, 'R_%3D%3A');
+  const packIds = packProp?.relation || [];
+  const pack = packIds.map(r => packTitles[r.id] || '').filter(Boolean).join(', ');
 
   return {
     _pageId: page.id,
@@ -173,19 +190,21 @@ function pageToRecord(page) {
     total:   g('cECx') || 0,
     shop:    g('SAe%60') || '',
     shipto:  g('TtRR') || '',
-    type:    g('%5Dyoq') || '',   // 商品類型 ← fixed
-    attr:    g('_o~%7B') || '',   // 購買屬性 ← fixed
+    type:    g('%5Dyoq') || '',
+    attr:    g('_o~%7B') || '',
     submit:  g('uF%3AY') || '',
     done:    g('ExlH') || '',
     pay:     g('ZFWL') || '',
     ship:    g('ko~P') || '',
     buy:     g('lA%3A_') || '',
-    pack:    g('%60AG%5B') || '',  // 出貨單 — same id check needed
+    pack,
+    _packIds: packIds.map(r => r.id),
   };
 }
 
 function recordToProperties(r) {
   const props = {};
+  if (r.notionId)  props['需求單編號'] = { title: [{ text: { content: r.notionId || '' } }] };
   if (r.client !== undefined) props['委託人']  = { rich_text: [{ text: { content: r.client || '' } }] };
   if (r.name   !== undefined) props['商品名稱'] = { rich_text: [{ text: { content: r.name   || '' } }] };
   if (r.code   !== undefined) props['商品編號'] = { rich_text: [{ text: { content: r.code   || '' } }] };
@@ -201,6 +220,6 @@ function recordToProperties(r) {
   if (r.pay)    props['付款狀態'] = { status: { name: r.pay  } };
   if (r.ship)   props['發貨狀態'] = { status: { name: r.ship } };
   if (r.buy)    props['購買狀態'] = { status: { name: r.buy  } };
-  if (r.pack !== undefined) props['出貨單'] = { rich_text: [{ text: { content: r.pack || '' } }] };
+  // 出貨單是 relation，新增/編輯時略過（需在 Notion 直接關聯）
   return props;
 }
