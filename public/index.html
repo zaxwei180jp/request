@@ -43,8 +43,9 @@
   .chip{border:0.5px solid var(--border-mid);border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;white-space:nowrap;background:var(--bg-card);color:var(--text-muted)}
   .chip.active{background:var(--purple);border-color:var(--purple);color:#fff}
 
-  .stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px}
-  .stat-item{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center}
+  .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 14px}
+  .stat-item{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center;cursor:pointer}
+  .stat-item.stat-active{border-color:var(--purple);background:var(--purple-light)}
   .stat-num{font-size:20px;font-weight:600;color:var(--purple)}
   .stat-label{font-size:10px;color:var(--text-hint);margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
 
@@ -140,7 +141,7 @@
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input type="text" id="searchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll()">
   </div>
-  <div class="filter-row" id="filterRow"></div>
+  <div class="filter-row" id="filterRow" style="display:none"></div>
 </div>
 
 <div class="stats-bar" id="statsBar"></div>
@@ -158,6 +159,7 @@
     </div>
     <div class="form-body">
       <div class="section-label">基本資訊</div>
+      <div class="field"><label>需求單編號</label><input id="f_id" placeholder="RE218"></div>
       <div class="row2">
         <div class="field"><label>委託人</label><input id="f_client" placeholder="姓名"></div>
         <div class="field"><label>商品編號</label><input id="f_code" placeholder="選填"></div>
@@ -310,19 +312,33 @@ function filtered() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   return records.filter(r => {
     const matchQ = !q || (r.id + r.client + r.name + r.code + r.shop).toLowerCase().includes(q);
-    const matchF = filterStatus === '全部' || r.buy === filterStatus;
+    let matchF = true;
+    if (activeFilter === 'buy_未開始')  matchF = r.buy === '未開始';
+    if (activeFilter === 'pay_未付款')  matchF = r.pay === '未付款';
+    if (activeFilter === 'ship_集貨中') matchF = r.ship === '集貨中';
     return matchQ && matchF;
   });
 }
 
+
 function renderStats() {
   const total = records.length;
-  const pending = records.filter(r => r.buy && r.buy !== '完成' && r.buy !== '取消').length;
-  const shipped = records.filter(r => r.ship === '已出貨' || r.ship === '已送達').length;
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat-item"><div class="stat-num">${total}</div><div class="stat-label">總筆數</div></div>
-    <div class="stat-item"><div class="stat-num">${pending}</div><div class="stat-label">待處理</div></div>
-    <div class="stat-item"><div class="stat-num">${shipped}</div><div class="stat-label">已出貨</div></div>`;
+  const unstarted = records.filter(r => r.buy === '未開始').length;
+  const unpaid = records.filter(r => r.pay === '未付款').length;
+  const collecting = records.filter(r => r.ship === '集貨中').length;
+
+  const items = [
+    { key: 'all',        num: total,      label: '總筆數' },
+    { key: 'buy_未開始',  num: unstarted,  label: '購買未開始' },
+    { key: 'pay_未付款',  num: unpaid,     label: '付款未付款' },
+    { key: 'ship_集貨中', num: collecting, label: '發貨集貨中' },
+  ];
+
+  document.getElementById('statsBar').innerHTML = items.map(i => `
+    <div class="stat-item${activeFilter === i.key ? ' stat-active' : ''}" onclick="setStatFilter('${i.key}')">
+      <div class="stat-num">${i.num}</div>
+      <div class="stat-label">${i.label}</div>
+    </div>`).join('');
 }
 
 function renderFilters() {
@@ -333,6 +349,7 @@ function renderFilters() {
 }
 
 function setFilter(s) { filterStatus = s; renderAll(); }
+function setStatFilter(key) { activeFilter = key; renderAll(); }
 
 function renderList() {
   const data = filtered();
@@ -380,7 +397,7 @@ function setFormSelects(r = {}) {
 function openAdd() {
   editingPageId = null;
   document.getElementById('formTitle').textContent = '新增需求單';
-  ['client', 'name', 'code', 'qty', 'price', 'quote', 'pack', 'done', 'submit'].forEach(k => document.getElementById('f_' + k).value = '');
+  ['client', 'name', 'code', 'qty', 'price', 'quote', 'pack', 'done', 'submit', 'id'].forEach(k => document.getElementById('f_' + k).value = '');
   document.getElementById('f_submit').value = new Date().toISOString().slice(0, 10);
   setFormSelects({});
   document.getElementById('formOverlay').classList.add('open');
@@ -391,7 +408,7 @@ function openEdit() {
   if (!r) return;
   editingPageId = r._pageId;
   document.getElementById('formTitle').textContent = '編輯需求單';
-  ['client', 'name', 'code', 'qty', 'price', 'quote', 'pack', 'done', 'submit'].forEach(k =>
+  ['client', 'name', 'code', 'qty', 'price', 'quote', 'pack', 'done', 'submit', 'id'].forEach(k =>
     document.getElementById('f_' + k).value = r[k] != null ? r[k] : '');
   setFormSelects(r);
   document.getElementById('formOverlay').classList.add('open');
@@ -403,6 +420,7 @@ async function saveRecord() {
   const btn = document.getElementById('btnSave');
   btn.disabled = true; btn.textContent = '儲存中…';
   const r = {
+    notionId: document.getElementById('f_id').value.trim(),
     client: document.getElementById('f_client').value.trim(),
     name:   document.getElementById('f_name').value.trim(),
     code:   document.getElementById('f_code').value.trim(),
