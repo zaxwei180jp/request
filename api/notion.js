@@ -116,7 +116,7 @@ function extractValue(prop) {
     case 'select':    return prop.select?.name || '';
     case 'status':    return prop.status?.name || '';
     case 'date':      return prop.date?.start || '';
-    case 'formula':   return prop.formula?.string || prop.formula?.number ?? '';
+    case 'formula':   return prop.formula?.string || (prop.formula?.number ?? '');
     case 'relation':  return prop.relation?.map(r => r.id) || [];
     default:          return null;
   }
