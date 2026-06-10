@@ -372,7 +372,10 @@ function renderList() {
       <div class="card-name">${r.name || '（未填商品）'}</div>
       <div class="card-qty-row">
         <span></span>
-        <span class="card-price">${r.qty ? `<span style="font-size:13px;color:var(--text-muted);margin-right:6px">數量 <strong style="font-size:16px;font-weight:700;color:var(--text)">${r.qty}</strong></span>` : ''}${r.price ? `¥${Number(r.price).toLocaleString()}` : ''}</span>
+        <span style="text-align:right;line-height:1.4">
+          ${r.qty ? `<div style="font-size:13px;color:var(--text-muted)">數量 <strong style="font-size:22px;font-weight:700;color:var(--text)">${r.qty}</strong></div>` : ''}
+          ${r.price ? `<div class="card-price">¥${Number(r.price).toLocaleString()}</div>` : ''}
+        </span>
       </div>
       <div class="card-meta">${[r.client,r.shop,r.shipto].filter(Boolean).join(' · ')}</div>
       <div class="card-footer">
