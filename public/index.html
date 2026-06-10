@@ -121,6 +121,15 @@
   .d-select{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:16px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center}
   .d-val-big{font-size:20px;font-weight:700;color:var(--purple)}
   .d-val-readonly{font-size:15px;color:var(--text-muted)}
+  .status-btn{border:none;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:opacity .1s}
+  .status-btn:active{opacity:0.75;transform:scale(0.96)}
+  .status-btn::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.7;display:inline-block}
+  .status-btn.b-done{background:#E1F5EE;color:#0F6E56}
+  .status-btn.b-pending{background:#FAEEDA;color:#854F0B}
+  .status-btn.b-shipped{background:#FAECE7;color:#993C1D}
+  .status-btn.b-cancel{background:#FCEBEB;color:#A32D2D}
+  .status-btn.b-arrived{background:#E6F1FB;color:#185FA5}
+  .status-btn.b-default{background:var(--bg-secondary);color:var(--text-muted)}
   .detail-del{display:flex;padding:0 14px 30px}
   .btn-del{flex:1;background:#FCEBEB;border:0.5px solid #F7C1C1;border-radius:var(--radius-sm);padding:13px;font-size:15px;cursor:pointer;color:#A32D2D;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
 </style>
@@ -459,15 +468,15 @@ function openDetail(pageId) {
       <div class="d-grid">
         <div class="d-field">
           <div class="d-field-label">購買狀態</div>
-          ${makeSelect('購買狀態', r.buy, 'd_buy')}
+          <button class="status-btn ${statusClass(r.buy)}" id="d_buy" data-value="${r.buy||''}" onclick="cycleStatus('d_buy','購買狀態')">${r.buy||'— 選擇 —'}</button>
         </div>
         <div class="d-field">
           <div class="d-field-label">付款狀態</div>
-          ${makeSelect('付款狀態', r.pay, 'd_pay')}
+          <button class="status-btn ${statusClass(r.pay)}" id="d_pay" data-value="${r.pay||''}" onclick="cycleStatus('d_pay','付款狀態')">${r.pay||'— 選擇 —'}</button>
         </div>
         <div class="d-field full">
           <div class="d-field-label">發貨狀態</div>
-          ${makeSelect('發貨狀態', r.ship, 'd_ship')}
+          <button class="status-btn ${statusClass(r.ship)}" id="d_ship" data-value="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'— 選擇 —'}</button>
         </div>
         <div class="d-field full" style="border-bottom:none">
           <div class="d-field-label">出貨單</div>
@@ -515,6 +524,24 @@ function openDetail(pageId) {
 
 function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
 
+function statusClass(s) {
+  return {'完成':'b-done','未開始':'b-pending','進行中':'b-pending','已出貨':'b-shipped','已送達':'b-arrived','取消':'b-cancel','集貨中':'b-pending','待付款':'b-pending','未付款':'b-pending'}[s] || 'b-default';
+}
+
+function cycleStatus(elId, schemaKey) {
+  const btn = document.getElementById(elId);
+  const opts = schema[schemaKey]?.options || [];
+  if (!opts.length) return;
+  const cur = btn.dataset.value || btn.textContent.trim();
+  const idx = opts.indexOf(cur);
+  const next = opts[(idx + 1) % opts.length];
+  btn.dataset.value = next;
+  btn.textContent = next;
+  // update badge color
+  const cls = {'完成':'b-done','未開始':'b-pending','進行中':'b-pending','已出貨':'b-shipped','已送達':'b-arrived','取消':'b-cancel','集貨中':'b-pending','待付款':'b-pending','未付款':'b-pending'}[next] || 'b-pending';
+  btn.className = 'status-btn ' + cls;
+}
+
 async function saveDetail() {
   const btn = document.getElementById('btnSaveDetail');
   btn.disabled = true; btn.textContent = '儲存中…';
@@ -529,9 +556,9 @@ async function saveDetail() {
     shipto: document.getElementById('d_shipto').value,
     type:   document.getElementById('d_type').value,
     attr:   document.getElementById('d_attr').value,
-    buy:    document.getElementById('d_buy').value,
-    pay:    document.getElementById('d_pay').value,
-    ship:   document.getElementById('d_ship').value,
+    buy:    document.getElementById('d_buy').dataset.value || document.getElementById('d_buy').textContent.trim(),
+    pay:    document.getElementById('d_pay').dataset.value || document.getElementById('d_pay').textContent.trim(),
+    ship:   document.getElementById('d_ship').dataset.value || document.getElementById('d_ship').textContent.trim(),
     submit: document.getElementById('d_submit').value,
     done:   document.getElementById('d_done').value,
   };
