@@ -53,6 +53,8 @@
   .card-id{font-size:13px;font-weight:600;color:var(--purple)}
   .card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:60%;align-items:center}
   .card-name{font-size:16px;font-weight:500;margin-bottom:4px;line-height:1.3}
+  .card-qty{font-size:15px;color:var(--text-muted);margin-bottom:4px}
+  .card-qty strong{font-size:18px;font-weight:700;color:var(--text)}
   .card-meta{font-size:13px;color:var(--text-muted);margin-bottom:8px}
   .card-footer{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .tag{display:inline-block;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:500;background:var(--bg-secondary);color:var(--text-muted)}
@@ -366,6 +368,7 @@ function renderList() {
         </div>
       </div>
       <div class="card-name">${r.name || '（未填商品）'}</div>
+      <div class="card-qty">數量 <strong>${r.qty || 1}</strong>${r.price ? `　¥${Number(r.price).toLocaleString()}` : ''}</div>
       <div class="card-meta">${[r.client,r.shop,r.shipto].filter(Boolean).join(' · ')}</div>
       <div class="card-footer">
         ${r.pack ? `<span class="tag">${r.pack}</span>` : ''}
