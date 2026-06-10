@@ -43,6 +43,7 @@
   .stat-item.stat-active{border-color:var(--purple);background:var(--purple-light)}
   .stat-num{font-size:20px;font-weight:600;color:var(--purple)}
   .stat-label{font-size:10px;color:var(--text-hint);margin-top:2px;letter-spacing:0.04em}
+  .stat-sub{font-size:10px;color:var(--purple);margin-top:2px;font-weight:500}
 
   /* LIST */
   .list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
@@ -324,13 +325,18 @@ function renderStats() {
   const items = [
     {key:'all',        num:base.length,                                    label},
     {key:'buy_未開始',  num:base.filter(r => r.buy === '未開始').length,   label:'購買未開始'},
-    {key:'pay_未付款',  num:base.filter(r => r.pay === '未付款').length,   label:'付款未付款'},
+    {key:'pay_未付款',
+      num: base.filter(r => r.pay === '未付款').length,
+      label:'未付款',
+      sub: '¥' + base.filter(r => r.pay === '未付款').reduce((s,r) => s + Number(r.total||0), 0).toLocaleString()
+    },
     {key:'ship_集貨中', num:base.filter(r => r.ship === '集貨中').length,  label:'發貨集貨中'},
   ];
   document.getElementById('statsBar').innerHTML = items.map(i =>
     `<div class="stat-item${activeFilter===i.key?' stat-active':''}" onclick="setStatFilter('${i.key}')">
       <div class="stat-num">${i.num}</div>
       <div class="stat-label">${i.label}</div>
+      ${i.sub ? `<div class="stat-sub">${i.sub}</div>` : ''}
     </div>`
   ).join('');
 }
