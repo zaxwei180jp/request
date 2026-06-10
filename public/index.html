@@ -297,28 +297,35 @@ function badgeClass(s) {
 }
 function badge(s) { return s ? `<span class="badge ${badgeClass(s)}">${s}</span>` : ''; }
 
-function filtered() {
+// base: records matching search query only (before stat filter)
+function baseFiltered() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  return records.filter(r => {
-    const matchQ = !q || (r.id+r.client+r.name+r.code+r.shop).toLowerCase().includes(q);
-    let matchF = true;
-    if (activeFilter === 'buy_未開始')  matchF = r.buy === '未開始';
-    if (activeFilter === 'pay_未付款')  matchF = r.pay === '未付款';
-    if (activeFilter === 'ship_集貨中') matchF = r.ship === '集貨中';
-    return matchQ && matchF;
+  return records.filter(r =>
+    !q || (r.id+r.client+r.name+r.code+r.shop).toLowerCase().includes(q)
+  );
+}
+
+// full filter: base + stat filter
+function filtered() {
+  const base = baseFiltered();
+  return base.filter(r => {
+    if (activeFilter === 'buy_未開始')  return r.buy === '未開始';
+    if (activeFilter === 'pay_未付款')  return r.pay === '未付款';
+    if (activeFilter === 'ship_集貨中') return r.ship === '集貨中';
+    return true;
   });
 }
 
 function renderStats() {
-  const total = records.length;
-  const unstarted  = records.filter(r => r.buy === '未開始').length;
-  const unpaid     = records.filter(r => r.pay === '未付款').length;
-  const collecting = records.filter(r => r.ship === '集貨中').length;
+  // Stats based on search-filtered records (not stat-filter)
+  const base = baseFiltered();
+  const q = document.getElementById('searchInput').value.trim();
+  const label = q ? `${base.length} 筆` : `總筆數`;
   const items = [
-    {key:'all',        num:total,      label:'總筆數'},
-    {key:'buy_未開始',  num:unstarted,  label:'購買未開始'},
-    {key:'pay_未付款',  num:unpaid,     label:'付款未付款'},
-    {key:'ship_集貨中', num:collecting, label:'發貨集貨中'},
+    {key:'all',        num:base.length,                                    label},
+    {key:'buy_未開始',  num:base.filter(r => r.buy === '未開始').length,   label:'購買未開始'},
+    {key:'pay_未付款',  num:base.filter(r => r.pay === '未付款').length,   label:'付款未付款'},
+    {key:'ship_集貨中', num:base.filter(r => r.ship === '集貨中').length,  label:'發貨集貨中'},
   ];
   document.getElementById('statsBar').innerHTML = items.map(i =>
     `<div class="stat-item${activeFilter===i.key?' stat-active':''}" onclick="setStatFilter('${i.key}')">
