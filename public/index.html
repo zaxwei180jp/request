@@ -389,8 +389,17 @@ function renderList() {
 function renderAll() { renderStats(); renderList(); }
 
 // ── ADD FORM ──
+function nextReId() {
+  const nums = records
+    .map(r => { const m = String(r.id).match(/^RE(\d+)$/i); return m ? parseInt(m[1]) : 0; })
+    .filter(n => n > 0);
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'RE' + (max + 1);
+}
+
 function openAdd() {
-  ['f_id','f_client','f_code','f_name','f_qty','f_price','f_quote','f_submit','f_done'].forEach(id => document.getElementById(id).value = '');
+  ['f_client','f_code','f_name','f_qty','f_price','f_quote','f_submit','f_done'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_id').value = nextReId();
   document.getElementById('f_submit').value = new Date().toISOString().slice(0,10);
   ['f_shop','f_shipto','f_type','f_attr','f_buy','f_pay','f_ship'].forEach(id => {
     const keyMap = {f_shop:'商店',f_shipto:'發貨客戶',f_type:'商品類型',f_attr:'購買屬性',f_buy:'購買狀態',f_pay:'付款狀態',f_ship:'發貨狀態'};
