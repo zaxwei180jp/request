@@ -5,641 +5,513 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>需求單管理</title>
 <style>
-  :root {
-    --purple:#534AB7;--purple-light:#EEEDFE;
-    --bg:#F5F5F7;--bg-card:#fff;--bg-secondary:#f0f0f5;
-    --text:#1a1a1a;--text-muted:#6e6e80;--text-hint:#a0a0b0;
-    --border:rgba(0,0,0,0.10);--border-mid:rgba(0,0,0,0.18);
-    --radius:14px;--radius-sm:8px;--shadow:0 1px 4px rgba(0,0,0,0.07);
-  }
-  @media(prefers-color-scheme:dark){
-    :root{
-      --bg:#111114;--bg-card:#1c1c22;--bg-secondary:#26262e;
-      --text:#f0f0f5;--text-muted:#9090a8;--text-hint:#55556a;
-      --border:rgba(255,255,255,0.09);--border-mid:rgba(255,255,255,0.16);
-      --shadow:0 1px 4px rgba(0,0,0,0.4);
-    }
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto}
+:root{
+  --purple:#534AB7;--purple-light:#EEEDFE;
+  --bg:#F5F5F7;--bg-card:#fff;--bg2:#f0f0f5;
+  --text:#1a1a1a;--muted:#6e6e80;--hint:#a0a0b0;
+  --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.18);
+  --r:14px;--rs:8px;--shadow:0 1px 4px rgba(0,0,0,0.07);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111114;--bg-card:#1c1c22;--bg2:#26262e;
+  --text:#f0f0f5;--muted:#9090a8;--hint:#55556a;
+  --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.16);
+  --shadow:0 1px 4px rgba(0,0,0,0.4);
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
 
-  /* HEADER */
-  .header{background:var(--bg-card);border-bottom:0.5px solid var(--border);padding:16px;position:sticky;top:0;z-index:50}
-  .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .header-title{font-size:20px;font-weight:600}
-  .header-sub{font-size:13px;color:var(--text-muted);margin-top:2px}
-  .btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--radius-sm);padding:9px 16px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
-  .btn-add:active{opacity:0.85;transform:scale(0.97)}
-  .btn-refresh{background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:8px 10px;cursor:pointer;color:var(--text-muted);display:flex;align-items:center}
-  .top-right{display:flex;gap:8px;align-items:center}
-  .search-wrap{display:flex;align-items:center;gap:8px;background:var(--bg-secondary);border-radius:var(--radius-sm);padding:9px 12px}
-  .search-wrap svg{flex-shrink:0;opacity:0.45}
-  .search-wrap input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
-  .search-wrap input::placeholder{color:var(--text-hint)}
+/* HEADER */
+.hdr{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:16px;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hdr-title{font-size:20px;font-weight:600}
+.hdr-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:9px 16px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-ref{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center}
+.top-r{display:flex;gap:8px;align-items:center}
+.srch{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:var(--rs);padding:9px 12px}
+.srch svg{flex-shrink:0;opacity:.45}
+.srch input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
+.srch input::placeholder{color:var(--hint)}
 
-  /* STATS */
-  .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 14px}
-  .stat-item{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center;cursor:pointer}
-  .stat-item.stat-active{border-color:var(--purple);background:var(--purple-light)}
-  .stat-num{font-size:20px;font-weight:600;color:var(--purple)}
-  .stat-label{font-size:10px;color:var(--text-hint);margin-top:2px;letter-spacing:0.04em}
-  .stat-sub{font-size:10px;color:var(--purple);margin-top:2px;font-weight:500}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 14px}
+.stat{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--rs);padding:10px;text-align:center;cursor:pointer}
+.stat.on{border-color:var(--purple);background:var(--purple-light)}
+.stat-n{font-size:20px;font-weight:600;color:var(--purple)}
+.stat-l{font-size:10px;color:var(--hint);margin-top:2px}
+.stat-s{font-size:10px;color:var(--purple);margin-top:2px;font-weight:500}
 
-  /* LIST */
-  .list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
-  .card{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius);padding:15px 16px;cursor:pointer;box-shadow:var(--shadow)}
-  .card:active{opacity:0.75}
-  .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-  .card-id{font-size:13px;font-weight:600;color:var(--purple)}
-  .card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:60%;align-items:center}
-  .card-name{font-size:16px;font-weight:500;margin-bottom:4px;line-height:1.3}
-  .card-qty-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-  .card-price{font-size:18px;font-weight:700;color:var(--text);text-align:right}
-  .card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-  .card-meta-chip{background:var(--bg-secondary);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text-muted);font-weight:500}
-  .card-meta-chip .chip-label{font-size:10px;color:var(--text-hint);margin-bottom:2px;letter-spacing:0.04em}
-  .card-meta-chip .chip-val{font-size:14px;font-weight:600;color:var(--text)}
-  .card-meta-chip.highlight{background:rgba(83,74,183,0.12)}
-  .card-meta-chip.highlight .chip-val{color:var(--purple)}
-  .card-footer{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-  .tag{display:inline-block;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:500;background:var(--bg-secondary);color:var(--text-muted)}
-  .tag-date{font-size:11px;color:var(--text-hint)}
-  .badge-label{font-size:10px;color:var(--text-hint)}
-  .badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;gap:4px}
-  .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:0.7;display:inline-block}
-  .b-done{background:#E1F5EE;color:#0F6E56}
-  .b-pending{background:#FAEEDA;color:#854F0B}
-  .b-shipped{background:#FAECE7;color:#993C1D}
-  .b-cancel{background:#FCEBEB;color:#A32D2D}
-  .b-arrived{background:#E6F1FB;color:#185FA5}
-  .empty{text-align:center;padding:64px 16px;color:var(--text-muted)}
-  .empty-icon{font-size:48px;margin-bottom:12px}
+/* LIST */
+.list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow);cursor:pointer;user-select:none}
+.card:active{opacity:.7}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.card-id{font-size:13px;font-weight:600;color:var(--purple)}
+.card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.bl{font-size:10px;color:var(--hint)}
+.badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;gap:4px}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.b-done{background:#E1F5EE;color:#0F6E56}
+.b-pend{background:#FAEEDA;color:#854F0B}
+.b-ship{background:#FAECE7;color:#993C1D}
+.b-arr{background:#E6F1FB;color:#185FA5}
+.b-canc{background:#FCEBEB;color:#A32D2D}
+.card-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.card-name{font-size:16px;font-weight:500;line-height:1.3}
+.card-price{flex-shrink:0;margin-left:12px;font-size:16px;font-weight:700;align-self:flex-start}
+.card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.chip{background:var(--bg2);border-radius:10px;padding:8px 12px}
+.chip-l{font-size:10px;color:var(--hint);margin-bottom:2px}
+.chip-v{font-size:14px;font-weight:600}
+.chip.hi{background:rgba(83,74,183,.12)}
+.chip.hi .chip-v{color:var(--purple)}
+.card-foot{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{background:var(--bg2);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:500;color:var(--muted)}
+.tag-d{font-size:11px;color:var(--hint)}
+.empty{text-align:center;padding:64px 16px;color:var(--muted)}
 
-  /* TOAST / LOADING */
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
-  .toast.show{opacity:1}
-  .loading-bar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:999;transition:width .3s;width:0}
+/* TOAST/LOADING */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
 
-  /* ADD FORM (bottom sheet) */
-  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;align-items:flex-end}
-  .overlay.open{display:flex}
-  .sheet{background:var(--bg-card);border-radius:20px 20px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:slideUp .25s ease}
-  @keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
-  .sheet-handle{width:36px;height:4px;background:var(--border-mid);border-radius:4px;margin:12px auto 0}
-  .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
-  .sheet-title{font-size:17px;font-weight:600}
-  .btn-close{background:var(--bg-secondary);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted)}
-  .form-body{padding:0 16px}
-  .field{margin-bottom:14px}
-  .field label{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em}
-  .field input,.field select{width:100%;border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:11px 13px;font-size:15px;background:var(--bg-card);color:var(--text);outline:none;-webkit-appearance:none;appearance:none}
-  .field input:focus,.field select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,0.12)}
-  .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .form-actions{display:flex;gap:10px;margin-top:20px}
-  .btn-cancel-f{flex:1;background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:var(--radius-sm);padding:13px;font-size:15px;cursor:pointer;color:var(--text-muted)}
-  .btn-save{flex:2;background:var(--purple);border:none;border-radius:var(--radius-sm);padding:13px;font-size:15px;font-weight:600;cursor:pointer;color:#fff}
-  .btn-save:disabled{opacity:0.6}
-  .section-label{font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.08em;margin:20px 0 12px;padding-bottom:8px;border-bottom:0.5px solid var(--border)}
+/* ADD SHEET */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:flex-end}
+.ov.open{display:flex}
+.sheet{background:var(--bg-card);border-radius:20px 20px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .25s ease}
+@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sh-handle{width:36px;height:4px;background:var(--border2);border-radius:4px;margin:12px auto 0}
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
+.sh-title{font-size:17px;font-weight:600}
+.btn-x{background:var(--bg2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.fbody{padding:0 16px}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.fld input,.fld select{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:11px 13px;font-size:15px;background:var(--bg-card);color:var(--text);outline:none;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.factions{display:flex;gap:10px;margin-top:20px}
+.btn-cf{flex:1;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:13px;font-size:15px;cursor:pointer;color:var(--muted)}
+.btn-sv{flex:2;background:var(--purple);border:none;border-radius:var(--rs);padding:13px;font-size:15px;font-weight:600;cursor:pointer;color:#fff}
+.btn-sv:disabled{opacity:.6}
+.slbl{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 12px;padding-bottom:8px;border-bottom:.5px solid var(--border)}
 
-  /* DETAIL (inline edit) */
-  .detail-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
-  .detail-overlay.open{display:block;animation:fadeIn .2s ease}
-  @keyframes fadeIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-  .detail-nav{background:var(--bg-card);border-bottom:0.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
-  .detail-nav-left{display:flex;align-items:center;gap:8px}
-  .btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:4px;font-size:15px;font-weight:500}
-  .detail-id-title{font-size:17px;font-weight:600}
-  .btn-save-detail{background:var(--purple);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer}
-  .btn-save-detail:disabled{opacity:0.6}
-
-  .detail-body{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:30px}
-  .d-card{background:var(--bg-card);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
-  .d-card-header{padding:12px 16px 10px;font-size:11px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;border-bottom:0.5px solid var(--border)}
-  .d-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
-  .d-field{padding:14px 16px;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border)}
-  .d-field:nth-child(even){border-right:none}
-  .d-field.full{grid-column:1/-1;border-right:none}
-  .d-field-label{font-size:11px;color:var(--text-hint);margin-bottom:6px;font-weight:500;letter-spacing:0.03em}
-  .d-input{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;padding:0}
-  .d-input:focus{color:var(--purple)}
-  .d-input[type=number]{-moz-appearance:textfield}
-  .d-input[type=number]::-webkit-outer-spin-button,.d-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
-  .d-select{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:16px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center}
-  .d-val-big{font-size:20px;font-weight:700;color:var(--purple)}
-  .d-val-readonly{font-size:15px;color:var(--text-muted)}
-  .status-btn{border:none;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:opacity .1s}
-  .status-btn:active{opacity:0.75;transform:scale(0.96)}
-  .status-btn::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.7;display:inline-block}
-  .status-btn.b-done{background:#E1F5EE;color:#0F6E56}
-  .status-btn.b-pending{background:#FAEEDA;color:#854F0B}
-  .status-btn.b-shipped{background:#FAECE7;color:#993C1D}
-  .status-btn.b-cancel{background:#FCEBEB;color:#A32D2D}
-  .status-btn.b-arrived{background:#E6F1FB;color:#185FA5}
-  .status-btn.b-default{background:var(--bg-secondary);color:var(--text-muted)}
-  .detail-del{display:flex;padding:0 14px 30px}
-  .btn-del{flex:1;background:#FCEBEB;border:0.5px solid #F7C1C1;border-radius:var(--radius-sm);padding:13px;font-size:15px;cursor:pointer;color:#A32D2D;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
+/* DETAIL */
+.dov{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
+.dov.open{display:block;animation:fin .2s ease}
+@keyframes fin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.dnav{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:4px;font-size:15px;font-weight:500}
+.d-title{font-size:17px;font-weight:600}
+.btn-sd{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer}
+.btn-sd:disabled{opacity:.6}
+.dbody{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:30px}
+.dc{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.dch{padding:12px 16px 10px;font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;border-bottom:.5px solid var(--border)}
+.dgrid{display:grid;grid-template-columns:1fr 1fr}
+.df{padding:14px 16px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)}
+.df:nth-child(even){border-right:none}
+.df.full{grid-column:1/-1;border-right:none}
+.df-l{font-size:11px;color:var(--hint);margin-bottom:6px;font-weight:500}
+.di{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;padding:0}
+.di:focus{color:var(--purple)}
+.di[type=number]{-moz-appearance:textfield}
+.di[type=number]::-webkit-outer-spin-button,.di[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.ds{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center;padding-right:16px}
+.sbtn{border:none;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.sbtn:active{opacity:.75}
+.sbtn::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.sbtn.b-done{background:#E1F5EE;color:#0F6E56}
+.sbtn.b-pend{background:#FAEEDA;color:#854F0B}
+.sbtn.b-ship{background:#FAECE7;color:#993C1D}
+.sbtn.b-arr{background:#E6F1FB;color:#185FA5}
+.sbtn.b-canc{background:#FCEBEB;color:#A32D2D}
+.sbtn.b-def{background:var(--bg2);color:var(--muted)}
+.d-big{font-size:20px;font-weight:700;color:var(--purple)}
+.d-ro{font-size:15px;color:var(--muted)}
+.ddel{display:flex;padding:0 14px 30px}
+.btn-del{flex:1;background:#FCEBEB;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:13px;font-size:15px;cursor:pointer;color:#A32D2D;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
 </style>
 </head>
 <body>
 
-<div class="loading-bar" id="loadingBar"></div>
+<div class="lbar" id="lbar"></div>
 <div class="toast" id="toast"></div>
 
-<div class="header">
-  <div class="header-top">
+<div class="hdr">
+  <div class="hdr-top">
     <div>
-      <div class="header-title">需求單</div>
-      <div class="header-sub" id="headerSub">載入中…</div>
+      <div class="hdr-title">需求單</div>
+      <div class="hdr-sub" id="hdrSub">載入中…</div>
     </div>
-    <div class="top-right">
-      <button class="btn-refresh" onclick="loadAll()" aria-label="重新整理">
+    <div class="top-r">
+      <button class="btn-ref" onclick="loadAll()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
       <button class="btn-add" onclick="openAdd()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        新增
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
       </button>
     </div>
   </div>
-  <div class="search-wrap">
+  <div class="srch">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="searchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll()">
+    <input type="text" id="srchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll()">
   </div>
 </div>
 
-<div class="stats-bar" id="statsBar"></div>
+<div class="stats" id="statsBar"></div>
 <div class="list" id="list"></div>
 
-<!-- ADD FORM -->
-<div class="overlay" id="formOverlay">
+<!-- ADD -->
+<div class="ov" id="addOv">
   <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header">
-      <span class="sheet-title">新增需求單</span>
-      <button class="btn-close" onclick="closeForm()">
+    <div class="sh-handle"></div>
+    <div class="sh-hdr">
+      <span class="sh-title">新增需求單</span>
+      <button class="btn-x" onclick="closeAdd()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="form-body">
-      <div class="section-label">基本資訊</div>
-      <div class="field"><label>需求單編號</label><input id="f_id" placeholder="RE218"></div>
-      <div class="row2">
-        <div class="field"><label>委託人</label><input id="f_client" placeholder="姓名"></div>
-        <div class="field"><label>商品編號</label><input id="f_code" placeholder="選填"></div>
+    <div class="fbody">
+      <div class="slbl">基本資訊</div>
+      <div class="fld"><label>需求單編號</label><input id="a_id" placeholder="RE001"></div>
+      <div class="r2">
+        <div class="fld"><label>委託人</label><input id="a_client" placeholder="姓名"></div>
+        <div class="fld"><label>商品編號</label><input id="a_code" placeholder="選填"></div>
       </div>
-      <div class="field"><label>商品名稱</label><input id="f_name" placeholder="商品名稱"></div>
-      <div class="row2">
-        <div class="field"><label>商店</label><select id="f_shop"><option value="">— 選擇 —</option></select></div>
-        <div class="field"><label>發貨客戶</label><select id="f_shipto"><option value="">— 選擇 —</option></select></div>
+      <div class="fld"><label>商品名稱</label><input id="a_name" placeholder="商品名稱"></div>
+      <div class="r2">
+        <div class="fld"><label>商店</label><select id="a_shop"><option value="">— 選擇 —</option></select></div>
+        <div class="fld"><label>發貨客戶</label><select id="a_shipto"><option value="">— 選擇 —</option></select></div>
       </div>
-      <div class="row2">
-        <div class="field"><label>商品類型</label><select id="f_type"><option value="">— 選擇 —</option></select></div>
-        <div class="field"><label>購買屬性</label><select id="f_attr"><option value="">— 選擇 —</option></select></div>
+      <div class="r2">
+        <div class="fld"><label>商品類型</label><select id="a_type"><option value="">— 選擇 —</option></select></div>
+        <div class="fld"><label>購買屬性</label><select id="a_attr"><option value="">— 選擇 —</option></select></div>
       </div>
-      <div class="section-label">金額 & 數量</div>
-      <div class="row2">
-        <div class="field"><label>數量</label><input id="f_qty" type="number" min="1" placeholder="1"></div>
-        <div class="field"><label>¥ 單價</label><input id="f_price" type="number" placeholder="0"></div>
+      <div class="slbl">金額 & 數量</div>
+      <div class="r2">
+        <div class="fld"><label>數量</label><input id="a_qty" type="number" min="1" placeholder="1"></div>
+        <div class="fld"><label>¥ 單價</label><input id="a_price" type="number" placeholder="0"></div>
       </div>
-      <div class="field"><label>報價</label><input id="f_quote" type="number" placeholder="選填"></div>
-      <div class="section-label">狀態</div>
-      <div class="row2">
-        <div class="field"><label>購買狀態</label><select id="f_buy"><option value="">— 選擇 —</option></select></div>
-        <div class="field"><label>付款狀態</label><select id="f_pay"><option value="">— 選擇 —</option></select></div>
+      <div class="fld"><label>報價</label><input id="a_quote" type="number" placeholder="選填"></div>
+      <div class="slbl">狀態</div>
+      <div class="r2">
+        <div class="fld"><label>購買狀態</label><select id="a_buy"><option value="">— 選擇 —</option></select></div>
+        <div class="fld"><label>付款狀態</label><select id="a_pay"><option value="">— 選擇 —</option></select></div>
       </div>
-      <div class="field"><label>發貨狀態</label><select id="f_ship"><option value="">— 選擇 —</option></select></div>
-      <div class="section-label">日期</div>
-      <div class="row2">
-        <div class="field"><label>提交日期</label><input id="f_submit" type="date"></div>
-        <div class="field"><label>完成日期</label><input id="f_done" type="date"></div>
+      <div class="fld"><label>發貨狀態</label><select id="a_ship"><option value="">— 選擇 —</option></select></div>
+      <div class="slbl">日期</div>
+      <div class="r2">
+        <div class="fld"><label>提交日期</label><input id="a_submit" type="date"></div>
+        <div class="fld"><label>完成日期</label><input id="a_done" type="date"></div>
       </div>
-      <div class="form-actions">
-        <button class="btn-cancel-f" onclick="closeForm()">取消</button>
-        <button class="btn-save" id="btnSave" onclick="saveNew()">新增到 Notion</button>
+      <div class="factions">
+        <button class="btn-cf" onclick="closeAdd()">取消</button>
+        <button class="btn-sv" id="btnAdd" onclick="saveNew()">新增到 Notion</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- DETAIL (inline edit) -->
-<div class="detail-overlay" id="detailOverlay">
-  <div class="detail-nav">
-    <div class="detail-nav-left">
+<!-- DETAIL -->
+<div class="dov" id="detailOv">
+  <div class="dnav">
+    <div style="display:flex;align-items:center;gap:8px">
       <button class="btn-back" onclick="closeDetail()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        返回
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回
       </button>
-      <span class="detail-id-title" id="d_id"></span>
+      <span class="d-title" id="dTitle"></span>
     </div>
-    <button class="btn-save-detail" id="btnSaveDetail" onclick="saveDetail()">儲存</button>
+    <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
   </div>
-  <div class="detail-body" id="d_body"></div>
-  <div class="detail-del">
+  <div class="dbody" id="dbody"></div>
+  <div class="ddel">
     <button class="btn-del" onclick="deleteRecord()">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      刪除這筆
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>刪除這筆
     </button>
   </div>
 </div>
 
 <script>
 const API = '/api/notion';
-let records = [];
-let schema = {};
-let shiptoList = []; // [{id, code, name}]
-let activeFilter = 'all';
-let viewingId = null;
+let records = [], schema = {}, shiptoList = [];
+let activeFilter = 'all', viewingId = null;
 
-function setLoading(pct) {
-  const bar = document.getElementById('loadingBar');
-  bar.style.width = pct + '%';
-  if (pct >= 100) setTimeout(() => bar.style.width = '0', 400);
-}
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+// ── UTILS ──
+function lbar(p){ const b=document.getElementById('lbar'); b.style.width=p+'%'; if(p>=100)setTimeout(()=>b.style.width='0',400); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-function populateSelect(elId, schemaKey, currentVal) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  const opts = schema[schemaKey]?.options || [];
-  el.innerHTML = '<option value="">— 選擇 —</option>' +
-    opts.map(o => `<option value="${o}"${o === currentVal ? ' selected' : ''}>${o}</option>`).join('');
+// ── LOAD ──
+async function loadSchema(){
+  const res = await fetch(API+'?action=schema');
+  schema = await res.json();
 }
-
-function makeSelect(schemaKey, currentVal, elId) {
-  const opts = schema[schemaKey]?.options || [];
-  return `<select class="d-select" id="${elId}">
-    <option value="">— 選擇 —</option>
-    ${opts.map(o => `<option value="${o}"${o === currentVal ? ' selected' : ''}>${o}</option>`).join('')}
-  </select>`;
+async function loadShipto(){
+  const res = await fetch(API+'?action=shipto_list');
+  shiptoList = await res.json();
 }
-
-function makeShiptoSelect(currentCode, elId) {
-  return `<select class="d-select" id="${elId}">
-    <option value="">— 選擇 —</option>
-    ${shiptoList.map(s => `<option value="${s.id}"${s.code === currentCode ? ' selected' : ''}>${s.code} ${s.name}</option>`).join('')}
-  </select>`;
+async function loadRecords(){
+  lbar(30);
+  const res = await fetch(API+'?action=list');
+  lbar(80);
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  records = data;
+  lbar(100);
+  const now = new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('hdrSub').textContent = `共 ${records.length} 筆 · ${now} 同步`;
 }
-
-async function loadSchema() {
-  try {
-    const res = await fetch(API + '?action=schema');
-    schema = await res.json();
-    ['f_shop','f_shipto','f_type','f_attr','f_buy','f_pay','f_ship'].forEach(id => {
-      const keyMap = {f_shop:'商店',f_shipto:'發貨客戶',f_type:'商品類型',f_attr:'購買屬性',f_buy:'購買狀態',f_pay:'付款狀態',f_ship:'發貨狀態'};
-      populateSelect(id, keyMap[id], '');
-    });
-  } catch(e) { console.error('Schema error', e); }
-}
-
-async function loadRecords() {
-  setLoading(30);
-  try {
-    const res = await fetch(API + '?action=list');
-    setLoading(80);
-    records = await res.json();
-    if (records.error) throw new Error(records.error);
-    setLoading(100);
+async function loadAll(){
+  try{
+    await Promise.all([loadSchema(), loadShipto(), loadRecords()]);
     renderAll();
-    const now = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
-    document.getElementById('headerSub').textContent = `共 ${records.length} 筆 · ${now} 同步`;
-  } catch(e) {
-    setLoading(100);
-    showToast('⚠️ 載入失敗：' + e.message);
-    document.getElementById('headerSub').textContent = '載入失敗';
-  }
+  } catch(e){ toast('⚠️ '+e.message); document.getElementById('hdrSub').textContent='載入失敗'; }
 }
 
-async function loadShipto() {
-  try {
-    const res = await fetch(API + '?action=shipto_list');
-    shiptoList = await res.json();
-  } catch(e) { console.error('Shipto load error', e); }
+// ── RENDER ──
+function bc(s){ return {'完成':'b-done','未開始':'b-pend','進行中':'b-pend','已出貨':'b-ship','已送達':'b-arr','取消':'b-canc','集貨中':'b-pend','待付款':'b-pend','未付款':'b-pend'}[s]||'b-pend'; }
+function badge(s){ return s?`<span class="badge ${bc(s)}">${s}</span>`:''; }
+
+function baseFiltered(){
+  const q = document.getElementById('srchInput').value.toLowerCase();
+  return records.filter(r=>!q||(r.id+r.client+r.name+r.code+r.shop).toLowerCase().includes(q));
 }
-
-async function loadAll() { await Promise.all([loadSchema(), loadRecords(), loadShipto()]); }
-
-function badgeClass(s) {
-  return {'完成':'b-done','未開始':'b-pending','進行中':'b-pending','已出貨':'b-shipped','已送達':'b-arrived','取消':'b-cancel','集貨中':'b-pending','待付款':'b-pending','未付款':'b-pending'}[s] || 'b-pending';
-}
-function badge(s) { return s ? `<span class="badge ${badgeClass(s)}">${s}</span>` : ''; }
-
-// base: records matching search query only (before stat filter)
-function baseFiltered() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  return records.filter(r =>
-    !q || (r.id+r.client+r.name+r.code+r.shop).toLowerCase().includes(q)
-  );
-}
-
-// full filter: base + stat filter
-function filtered() {
+function filtered(){
   const base = baseFiltered();
-  return base.filter(r => {
-    if (activeFilter === 'buy_未開始')  return r.buy === '未開始';
-    if (activeFilter === 'pay_未付款')  return r.pay === '未付款';
-    if (activeFilter === 'ship_集貨中') return r.ship === '集貨中';
+  return base.filter(r=>{
+    if(activeFilter==='buy_未開始') return r.buy==='未開始';
+    if(activeFilter==='pay_未付款') return r.pay==='未付款';
+    if(activeFilter==='ship_集貨中') return r.ship==='集貨中';
     return true;
   });
 }
 
-function renderStats() {
-  // Stats based on search-filtered records (not stat-filter)
+function renderStats(){
   const base = baseFiltered();
-  const q = document.getElementById('searchInput').value.trim();
-  const label = q ? `${base.length} 筆` : `總筆數`;
-  const items = [
-    {key:'all',        num:base.length,                                    label},
-    {key:'buy_未開始',  num:base.filter(r => r.buy === '未開始').length,   label:'購買未開始'},
-    {key:'pay_未付款',
-      num: base.filter(r => r.pay === '未付款').length,
-      label:'未付款',
-      sub: '¥' + base.filter(r => r.pay === '未付款').reduce((s,r) => s + Number(r.total||0), 0).toLocaleString()
-    },
-    {key:'ship_集貨中', num:base.filter(r => r.ship === '集貨中').length,  label:'發貨集貨中'},
+  const q = document.getElementById('srchInput').value.trim();
+  const items=[
+    {key:'all', num:base.length, label:q?`${base.length} 筆`:'總筆數'},
+    {key:'buy_未開始', num:base.filter(r=>r.buy==='未開始').length, label:'購買未開始'},
+    {key:'pay_未付款', num:base.filter(r=>r.pay==='未付款').length, label:'未付款',
+      sub:'¥'+base.filter(r=>r.pay==='未付款').reduce((s,r)=>s+Number(r.total||0),0).toLocaleString()},
+    {key:'ship_集貨中', num:base.filter(r=>r.ship==='集貨中').length, label:'發貨集貨中'},
   ];
-  document.getElementById('statsBar').innerHTML = items.map(i =>
-    `<div class="stat-item${activeFilter===i.key?' stat-active':''}" onclick="setStatFilter('${i.key}')">
-      <div class="stat-num">${i.num}</div>
-      <div class="stat-label">${i.label}</div>
-      ${i.sub ? `<div class="stat-sub">${i.sub}</div>` : ''}
-    </div>`
-  ).join('');
+  document.getElementById('statsBar').innerHTML = items.map(i=>`
+    <div class="stat${activeFilter===i.key?' on':''}" onclick="setFilter('${i.key}')">
+      <div class="stat-n">${i.num}</div>
+      <div class="stat-l">${i.label}</div>
+      ${i.sub?`<div class="stat-s">${i.sub}</div>`:''}
+    </div>`).join('');
 }
 
-function setStatFilter(key) { activeFilter = key; renderAll(); }
+function setFilter(k){ activeFilter=k; renderAll(); }
 
-function renderList() {
+function renderList(){
   const data = filtered();
   const el = document.getElementById('list');
-  if (!data.length) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>沒有符合的需求單</p></div>`; return; }
-  // Populate global map
-  data.forEach((r, i) => { window._recordMap[i] = r._pageId; });
-  el.innerHTML = data.map((r, i) => `
-    <div class="card" onclick="window._openCard(${i})">
+  if(!data.length){ el.innerHTML=`<div class="empty">📭<p>沒有符合的需求單</p></div>`; return; }
+  el.innerHTML = data.map((r,i)=>`
+    <div class="card" onclick="cardClick(${i})">
       <div class="card-top">
         <span class="card-id">${r.id}</span>
         <div class="card-badges">
-          ${r.buy ? `<span class="badge-label">購買</span>${badge(r.buy)}` : ''}
-          ${r.ship ? `<span class="badge-label">發貨</span>${badge(r.ship)}` : ''}
+          ${r.buy?`<span class="bl">購買</span>${badge(r.buy)}`:''}
+          ${r.ship?`<span class="bl">發貨</span>${badge(r.ship)}`:''}
         </div>
       </div>
-      <div class="card-qty-row">
-        <div class="card-name">${r.name || '（未填商品）'}</div>
-        ${r.price ? `<span style="flex-shrink:0;margin-left:12px;font-size:16px;font-weight:700;color:var(--text);align-self:flex-start">¥${Number(r.price).toLocaleString()}</span>` : ''}
+      <div class="card-row">
+        <div class="card-name">${r.name||'（未填商品）'}</div>
+        ${r.price?`<span class="card-price">¥${Number(r.price).toLocaleString()}</span>`:''}
       </div>
       <div class="card-meta">
-        ${r.client ? `<span class="card-meta-chip highlight"><div class="chip-label">委託人</div><div class="chip-val">${r.client}</div></span>` : ''}
-        ${r.shop ? `<span class="card-meta-chip"><div class="chip-label">商店</div><div class="chip-val">${r.shop}</div></span>` : ''}
-        ${r.shipto ? `<span class="card-meta-chip"><div class="chip-label">發貨客戶</div><div class="chip-val">${r.shipto}${r.shiptoName ? ` ${r.shiptoName}` : ''}</div></span>` : ''}
-        ${r.qty ? `<span class="card-meta-chip"><div class="chip-label">數量</div><div class="chip-val" style="font-size:18px">${r.qty}</div></span>` : ''}
+        ${r.client?`<div class="chip hi"><div class="chip-l">委託人</div><div class="chip-v">${r.client}</div></div>`:''}
+        ${r.shop?`<div class="chip"><div class="chip-l">商店</div><div class="chip-v">${r.shop}</div></div>`:''}
+        ${r.shipto?`<div class="chip"><div class="chip-l">發貨客戶</div><div class="chip-v">${r.shipto}${r.shiptoName?' '+r.shiptoName:''}</div></div>`:''}
+        ${r.qty?`<div class="chip"><div class="chip-l">數量</div><div class="chip-v" style="font-size:18px">${r.qty}</div></div>`:''}
       </div>
-      <div class="card-footer">
-        ${r.pack ? `<span class="tag">${r.pack}</span>` : ''}
-        ${r.type ? `<span class="tag">${r.type}</span>` : ''}
-        ${r.submit ? `<span class="tag-date">提交 ${r.submit}</span>` : ''}
+      <div class="card-foot">
+        ${r.pack?`<span class="tag">${r.pack}</span>`:''}
+        ${r.type?`<span class="tag">${r.type}</span>`:''}
+        ${r.submit?`<span class="tag-d">提交 ${r.submit}</span>`:''}
       </div>
     </div>`).join('');
 }
 
-function renderAll() { renderStats(); renderList(); }
+function renderAll(){ renderStats(); renderList(); }
 
-// Global record map for click access
-window._recordMap = {};
-
-
+// ── CARD CLICK (index-based, no string ID issues) ──
+function cardClick(i){
+  const data = filtered();
+  const r = data[i];
+  if(!r){ toast('找不到資料'); return; }
+  openDetail(r._pageId);
+}
 
 // ── ADD FORM ──
-function nextReId() {
-  const nums = records
-    .map(r => { const m = String(r.id).match(/^RE(\d+)$/i); return m ? parseInt(m[1]) : 0; })
-    .filter(n => n > 0);
-  const max = nums.length ? Math.max(...nums) : 0;
-  return 'RE' + (max + 1);
+function fillSelect(id, key, cur){
+  const el=document.getElementById(id);
+  const opts=schema[key]?.options||[];
+  el.innerHTML='<option value="">— 選擇 —</option>'+opts.map(o=>`<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('');
+}
+function fillShiptoSelect(id, curCode){
+  const el=document.getElementById(id);
+  el.innerHTML='<option value="">— 選擇 —</option>'+shiptoList.map(s=>`<option value="${s.id}"${s.code===curCode?' selected':''}>${s.code} ${s.name}</option>`).join('');
 }
 
-function openAdd() {
-  ['f_client','f_code','f_name','f_qty','f_price','f_quote','f_submit','f_done'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f_id').value = nextReId();
-  document.getElementById('f_submit').value = new Date().toISOString().slice(0,10);
-  ['f_shop','f_type','f_attr','f_buy','f_pay','f_ship'].forEach(id => {
-    const keyMap = {f_shop:'商店',f_type:'商品類型',f_attr:'購買屬性',f_buy:'購買狀態',f_pay:'付款狀態',f_ship:'發貨狀態'};
-    populateSelect(id, keyMap[id], '');
-  });
-  // populate shipto from shiptoList
-  const fShipto = document.getElementById('f_shipto');
-  fShipto.innerHTML = '<option value="">— 選擇 —</option>' +
-    shiptoList.map(s => `<option value="${s.id}">${s.code} ${s.name}</option>`).join('');
-  document.getElementById('formOverlay').classList.add('open');
+function nextId(){
+  const nums=records.map(r=>{const m=String(r.id).match(/^RE(\d+)$/i);return m?parseInt(m[1]):0;}).filter(n=>n>0);
+  return 'RE'+(nums.length?Math.max(...nums)+1:1);
 }
-function closeForm() { document.getElementById('formOverlay').classList.remove('open'); }
 
-async function saveNew() {
-  const btn = document.getElementById('btnSave');
-  btn.disabled = true; btn.textContent = '新增中…';
-  const r = {
-    notionId: document.getElementById('f_id').value.trim(),
-    client: document.getElementById('f_client').value.trim(),
-    name:   document.getElementById('f_name').value.trim(),
-    code:   document.getElementById('f_code').value.trim(),
-    qty:    document.getElementById('f_qty').value || 1,
-    price:  document.getElementById('f_price').value || 0,
-    quote:  document.getElementById('f_quote').value || 0,
-    shop:   document.getElementById('f_shop').value,
-    shiptoPageId: document.getElementById('f_shipto').value,
-    type:   document.getElementById('f_type').value,
-    attr:   document.getElementById('f_attr').value,
-    submit: document.getElementById('f_submit').value,
-    buy:    document.getElementById('f_buy').value,
-    pay:    document.getElementById('f_pay').value,
-    ship:   document.getElementById('f_ship').value,
-    done:   document.getElementById('f_done').value,
+function openAdd(){
+  document.getElementById('a_id').value=nextId();
+  ['a_client','a_code','a_name','a_qty','a_price','a_quote','a_done'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
+  fillSelect('a_shop','商店',''); fillSelect('a_type','商品類型',''); fillSelect('a_attr','購買屬性','');
+  fillSelect('a_buy','購買狀態',''); fillSelect('a_pay','付款狀態',''); fillSelect('a_ship','發貨狀態','');
+  fillShiptoSelect('a_shipto','');
+  document.getElementById('addOv').classList.add('open');
+}
+function closeAdd(){ document.getElementById('addOv').classList.remove('open'); }
+
+async function saveNew(){
+  const btn=document.getElementById('btnAdd');
+  btn.disabled=true; btn.textContent='新增中…';
+  const r={
+    notionId:document.getElementById('a_id').value.trim(),
+    client:document.getElementById('a_client').value.trim(),
+    name:document.getElementById('a_name').value.trim(),
+    code:document.getElementById('a_code').value.trim(),
+    qty:document.getElementById('a_qty').value||1,
+    price:document.getElementById('a_price').value||0,
+    quote:document.getElementById('a_quote').value||0,
+    shop:document.getElementById('a_shop').value,
+    shiptoPageId:document.getElementById('a_shipto').value,
+    type:document.getElementById('a_type').value,
+    attr:document.getElementById('a_attr').value,
+    submit:document.getElementById('a_submit').value,
+    buy:document.getElementById('a_buy').value,
+    pay:document.getElementById('a_pay').value,
+    ship:document.getElementById('a_ship').value,
+    done:document.getElementById('a_done').value,
   };
-  try {
-    const res = await fetch(`${API}?action=create`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(r)});
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    showToast('✅ 已新增到 Notion');
-    closeForm();
-    await loadRecords();
-  } catch(e) { showToast('❌ ' + e.message); }
-  btn.disabled = false; btn.textContent = '新增到 Notion';
+  try{
+    const res=await fetch(API+'?action=create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
+    const d=await res.json(); if(d.error) throw new Error(d.error);
+    toast('✅ 已新增到 Notion'); closeAdd(); await loadRecords(); renderAll();
+  } catch(e){ toast('❌ '+e.message); }
+  btn.disabled=false; btn.textContent='新增到 Notion';
 }
 
-// ── DETAIL (inline edit) ──
-function openDetail(pageId) {
-  viewingId = pageId;
-  // Try exact match first, then try trimmed/decoded
-  let r = records.find(x => x._pageId === pageId);
-  if (!r) r = records.find(x => String(x._pageId).trim() === String(pageId).trim());
-  if (!r) { showToast('找不到資料：' + pageId.slice(0,8)); return; }
-  document.getElementById('d_id').textContent = r.id;
-  const total = (Number(r.price||0) * Number(r.qty||1)).toLocaleString();
+// ── DETAIL ──
+function scls(s){ return {'完成':'b-done','未開始':'b-pend','進行中':'b-pend','已出貨':'b-ship','已送達':'b-arr','取消':'b-canc','集貨中':'b-pend','待付款':'b-pend','未付款':'b-pend'}[s]||'b-def'; }
 
-  document.getElementById('d_body').innerHTML = `
-    <div class="d-card">
-      <div class="d-card-header">基本資訊</div>
-      <div class="d-grid">
-        <div class="d-field full">
-          <div class="d-field-label">商品名稱</div>
-          <input class="d-input" id="d_name" value="${r.name||''}" placeholder="—">
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">委託人</div>
-          <input class="d-input" id="d_client" value="${r.client||''}" placeholder="—">
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">商品編號</div>
-          <input class="d-input" id="d_code" value="${r.code||''}" placeholder="—">
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">商店</div>
-          ${makeSelect('商店', r.shop, 'd_shop')}
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">發貨客戶${r.shiptoName ? `<span style="float:right;font-weight:600;color:var(--text)">${r.shiptoName}</span>` : ''}</div>
-          ${makeShiptoSelect(r.shipto, 'd_shipto')}
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">商品類型</div>
-          ${makeSelect('商品類型', r.type, 'd_type')}
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">購買屬性</div>
-          ${makeSelect('購買屬性', r.attr, 'd_attr')}
-        </div>
+function cycleStatus(elId, key){
+  const btn=document.getElementById(elId);
+  const opts=schema[key]?.options||[];
+  const cur=btn.dataset.val||'';
+  const idx=opts.indexOf(cur);
+  const next=opts[(idx+1)%opts.length]||opts[0]||'';
+  btn.dataset.val=next; btn.textContent=next;
+  btn.className='sbtn '+scls(next);
+}
+
+function msel(key, cur, id){
+  const opts=schema[key]?.options||[];
+  return `<select class="ds" id="${id}"><option value="">— 選擇 —</option>${opts.map(o=>`<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('')}</select>`;
+}
+function mshipto(curCode, id){
+  return `<select class="ds" id="${id}"><option value="">— 選擇 —</option>${shiptoList.map(s=>`<option value="${s.id}"${s.code===curCode?' selected':''}>${s.code} ${s.name}</option>`).join('')}</select>`;
+}
+
+function openDetail(pageId){
+  const r=records.find(x=>x._pageId===pageId);
+  if(!r){ toast('找不到資料'); return; }
+  viewingId=pageId;
+  document.getElementById('dTitle').textContent=r.id;
+  const total=(Number(r.price||0)*Number(r.qty||1)).toLocaleString();
+  document.getElementById('dbody').innerHTML=`
+    <div class="dc">
+      <div class="dch">基本資訊</div>
+      <div class="dgrid">
+        <div class="df full"><div class="df-l">商品名稱</div><input class="di" id="d_name" value="${r.name||''}"></div>
+        <div class="df"><div class="df-l">委託人</div><input class="di" id="d_client" value="${r.client||''}"></div>
+        <div class="df"><div class="df-l">商品編號</div><input class="di" id="d_code" value="${r.code||''}"></div>
+        <div class="df"><div class="df-l">商店</div>${msel('商店',r.shop,'d_shop')}</div>
+        <div class="df"><div class="df-l">發貨客戶${r.shiptoName?` · ${r.shiptoName}`:''}</div>${mshipto(r.shipto,'d_shipto')}</div>
+        <div class="df"><div class="df-l">商品類型</div>${msel('商品類型',r.type,'d_type')}</div>
+        <div class="df" style="border-bottom:none"><div class="df-l">購買屬性</div>${msel('購買屬性',r.attr,'d_attr')}</div>
       </div>
     </div>
-    <div class="d-card">
-      <div class="d-card-header">狀態</div>
-      <div class="d-grid">
-        <div class="d-field">
-          <div class="d-field-label">購買狀態</div>
-          <button class="status-btn ${statusClass(r.buy)}" id="d_buy" data-value="${r.buy||''}" onclick="cycleStatus('d_buy','購買狀態')">${r.buy||'— 選擇 —'}</button>
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">付款狀態</div>
-          <button class="status-btn ${statusClass(r.pay)}" id="d_pay" data-value="${r.pay||''}" onclick="cycleStatus('d_pay','付款狀態')">${r.pay||'— 選擇 —'}</button>
-        </div>
-        <div class="d-field full">
-          <div class="d-field-label">發貨狀態</div>
-          <button class="status-btn ${statusClass(r.ship)}" id="d_ship" data-value="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'— 選擇 —'}</button>
-        </div>
-        <div class="d-field full" style="border-bottom:none">
-          <div class="d-field-label">出貨單</div>
-          <span class="d-val-readonly">${r.pack||'—'}</span>
-        </div>
+    <div class="dc">
+      <div class="dch">狀態</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">購買狀態</div><button class="sbtn ${scls(r.buy)}" id="d_buy" data-val="${r.buy||''}" onclick="cycleStatus('d_buy','購買狀態')">${r.buy||'— 選擇 —'}</button></div>
+        <div class="df"><div class="df-l">付款狀態</div><button class="sbtn ${scls(r.pay)}" id="d_pay" data-val="${r.pay||''}" onclick="cycleStatus('d_pay','付款狀態')">${r.pay||'— 選擇 —'}</button></div>
+        <div class="df full"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'— 選擇 —'}</button></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">出貨單</div><span class="d-ro">${r.pack||'—'}</span></div>
       </div>
     </div>
-    <div class="d-card">
-      <div class="d-card-header">金額</div>
-      <div class="d-grid">
-        <div class="d-field">
-          <div class="d-field-label">數量</div>
-          <input class="d-input" id="d_qty" type="number" value="${r.qty||0}">
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">¥ 單價</div>
-          <input class="d-input" id="d_price" type="number" value="${r.price||0}">
-        </div>
-        <div class="d-field">
-          <div class="d-field-label">報價</div>
-          <input class="d-input" id="d_quote" type="number" value="${r.quote||0}">
-        </div>
-        <div class="d-field" style="border-bottom:none">
-          <div class="d-field-label">總價</div>
-          <span class="d-val-big">¥${total}</span>
-        </div>
+    <div class="dc">
+      <div class="dch">金額</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}"></div>
+        <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}"></div>
+        <div class="df"><div class="df-l">報價</div><input class="di" id="d_quote" type="number" value="${r.quote||0}"></div>
+        <div class="df" style="border-bottom:none"><div class="df-l">總價</div><span class="d-big">¥${total}</span></div>
       </div>
     </div>
-    <div class="d-card">
-      <div class="d-card-header">日期</div>
-      <div class="d-grid">
-        <div class="d-field" style="border-bottom:none">
-          <div class="d-field-label">提交日期</div>
-          <input class="d-input" id="d_submit" type="date" value="${r.submit||''}">
-        </div>
-        <div class="d-field" style="border-bottom:none;border-right:none">
-          <div class="d-field-label">完成日期</div>
-          <input class="d-input" id="d_done" type="date" value="${r.done||''}">
-        </div>
+    <div class="dc">
+      <div class="dch">日期</div>
+      <div class="dgrid">
+        <div class="df" style="border-bottom:none"><div class="df-l">提交日期</div><input class="di" id="d_submit" type="date" value="${r.submit||''}"></div>
+        <div class="df" style="border-bottom:none;border-right:none"><div class="df-l">完成日期</div><input class="di" id="d_done" type="date" value="${r.done||''}"></div>
       </div>
     </div>`;
-
-  document.getElementById('detailOverlay').classList.add('open');
+  document.getElementById('detailOv').classList.add('open');
 }
+function closeDetail(){ document.getElementById('detailOv').classList.remove('open'); }
 
-function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
-
-function statusClass(s) {
-  return {'完成':'b-done','未開始':'b-pending','進行中':'b-pending','已出貨':'b-shipped','已送達':'b-arrived','取消':'b-cancel','集貨中':'b-pending','待付款':'b-pending','未付款':'b-pending'}[s] || 'b-default';
-}
-
-function cycleStatus(elId, schemaKey) {
-  const btn = document.getElementById(elId);
-  const opts = schema[schemaKey]?.options || [];
-  if (!opts.length) return;
-  const cur = btn.dataset.value || btn.textContent.trim();
-  const idx = opts.indexOf(cur);
-  const next = opts[(idx + 1) % opts.length];
-  btn.dataset.value = next;
-  btn.textContent = next;
-  // update badge color
-  const cls = {'完成':'b-done','未開始':'b-pending','進行中':'b-pending','已出貨':'b-shipped','已送達':'b-arrived','取消':'b-cancel','集貨中':'b-pending','待付款':'b-pending','未付款':'b-pending'}[next] || 'b-pending';
-  btn.className = 'status-btn ' + cls;
-}
-
-async function saveDetail() {
-  const btn = document.getElementById('btnSaveDetail');
-  btn.disabled = true; btn.textContent = '儲存中…';
-  const r = {
-    client: document.getElementById('d_client').value.trim(),
-    name:   document.getElementById('d_name').value.trim(),
-    code:   document.getElementById('d_code').value.trim(),
-    qty:    document.getElementById('d_qty').value || 0,
-    price:  document.getElementById('d_price').value || 0,
-    quote:  document.getElementById('d_quote').value || 0,
-    shop:   document.getElementById('d_shop').value,
-    shiptoPageId: document.getElementById('d_shipto').value,
-    type:   document.getElementById('d_type').value,
-    attr:   document.getElementById('d_attr').value,
-    buy:    document.getElementById('d_buy').dataset.value || document.getElementById('d_buy').textContent.trim(),
-    pay:    document.getElementById('d_pay').dataset.value || document.getElementById('d_pay').textContent.trim(),
-    ship:   document.getElementById('d_ship').dataset.value || document.getElementById('d_ship').textContent.trim(),
-    submit: document.getElementById('d_submit').value,
-    done:   document.getElementById('d_done').value,
+async function saveDetail(){
+  const btn=document.getElementById('btnSave');
+  btn.disabled=true; btn.textContent='儲存中…';
+  const r={
+    client:document.getElementById('d_client').value.trim(),
+    name:document.getElementById('d_name').value.trim(),
+    code:document.getElementById('d_code').value.trim(),
+    qty:document.getElementById('d_qty').value||0,
+    price:document.getElementById('d_price').value||0,
+    quote:document.getElementById('d_quote').value||0,
+    shop:document.getElementById('d_shop').value,
+    shiptoPageId:document.getElementById('d_shipto').value,
+    type:document.getElementById('d_type').value,
+    attr:document.getElementById('d_attr').value,
+    buy:document.getElementById('d_buy').dataset.val||'',
+    pay:document.getElementById('d_pay').dataset.val||'',
+    ship:document.getElementById('d_ship').dataset.val||'',
+    submit:document.getElementById('d_submit').value,
+    done:document.getElementById('d_done').value,
   };
-  try {
-    const res = await fetch(`${API}?action=update&id=${viewingId}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(r)});
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    showToast('✅ 已儲存');
-    await loadRecords();
-    openDetail(viewingId);
-  } catch(e) { showToast('❌ ' + e.message); }
-  btn.disabled = false; btn.textContent = '儲存';
+  try{
+    const res=await fetch(`${API}?action=update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
+    const d=await res.json(); if(d.error) throw new Error(d.error);
+    toast('✅ 已儲存');
+    await loadRecords(); renderAll(); openDetail(viewingId);
+  } catch(e){ toast('❌ '+e.message); }
+  btn.disabled=false; btn.textContent='儲存';
 }
 
-async function deleteRecord() {
-  const r = records.find(x => x._pageId === viewingId);
-  if (!r || !confirm(`確定要刪除「${r.id}」嗎？`)) return;
-  try {
-    await fetch(`${API}?action=delete&id=${viewingId}`, {method:'DELETE'});
-    showToast('🗑️ 已刪除');
-    closeDetail();
-    await loadRecords();
-  } catch(e) { showToast('❌ 刪除失敗'); }
+async function deleteRecord(){
+  const r=records.find(x=>x._pageId===viewingId);
+  if(!r||!confirm(`確定要刪除「${r.id}」嗎？`)) return;
+  try{
+    await fetch(`${API}?action=delete&id=${viewingId}`,{method:'DELETE'});
+    toast('🗑️ 已刪除'); closeDetail(); await loadRecords(); renderAll();
+  } catch(e){ toast('❌ 刪除失敗'); }
 }
 
-window._openCard = function(i) {
-  const pageId = window._recordMap[i];
-  if (pageId) openDetail(pageId);
-};
 loadAll();
 </script>
 </body>
