@@ -131,15 +131,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
 .d-big{font-size:20px;font-weight:700;color:var(--purple)}
 .d-ro{font-size:15px;color:var(--muted)}
-.batch-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg-card);border-top:.5px solid var(--border);padding:12px 14px;display:none;flex-direction:column;gap:10px;z-index:150;box-shadow:0 -4px 20px rgba(0,0,0,0.15)}
-.batch-bar.open{display:flex}
-.batch-top{display:flex;align-items:center;justify-content:space-between}
+.batch-panel{display:none;background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;flex-direction:column;gap:14px}
+.batch-panel.open{display:flex}
+.batch-panel-top{display:flex;align-items:center;justify-content:space-between}
 .batch-count{font-size:14px;font-weight:600;color:var(--purple)}
-.batch-actions{display:flex;gap:8px;overflow-x:auto}
-.batch-actions::-webkit-scrollbar{display:none}
-.batch-btn{flex-shrink:0;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);white-space:nowrap}
-.batch-btn:active{opacity:.75}
-.batch-cancel{background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:4px 8px}
+.batch-ctrl{display:flex;gap:8px}
+.batch-ctrl button{background:none;border:.5px solid var(--border2);border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--muted)}
+.batch-group{display:flex;flex-direction:column;gap:8px}
+.batch-group-label{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em}
+.batch-opts{display:flex;gap:6px;flex-wrap:wrap}
+.batch-opt{border:none;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;background:var(--bg2);color:var(--text)}
+.batch-opt:active{opacity:.75;transform:scale(.97)}
+.batch-opt.buy{background:#E1F5EE;color:#0F6E56}
+.batch-opt.pay{background:#E6F1FB;color:#185FA5}
+.batch-opt.ship{background:#FAEEDA;color:#854F0B}
 .card.selected{border-color:var(--purple);background:rgba(83,74,183,.06)}
 .card-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .15s}
 .card.selected .card-check{background:var(--purple);border-color:var(--purple)}
@@ -178,6 +183,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <div class="stats" id="statsBar"></div>
+<div class="batch-panel" id="batchBar"><div class="batch-panel-top"><span class="batch-count" id="batchCount">已選 0 筆</span><div class="batch-ctrl"><button onclick="selectAll()">全選</button><button onclick="clearSelect()">取消全選</button></div></div><div id="batchActions"></div></div>
 <div class="list" id="list"></div>
 
 <!-- ADD -->
@@ -579,23 +585,38 @@ function updateBatchBar(){
   document.getElementById('batchCount').textContent = `已選 ${count} 筆`;
   bar.classList.toggle('open', selectMode);
 
-  // Build batch action buttons from schema
   const buyOpts = schema['購買狀態']?.options || [];
   const payOpts = schema['付款狀態']?.options || [];
   const shipOpts = schema['發貨狀態']?.options || [];
 
   const actions = [
-    ...buyOpts.map(o => ({ label: `購買→${o}`, field: 'buy', val: o, key: '購買狀態' })),
-    ...payOpts.map(o => ({ label: `付款→${o}`, field: 'pay', val: o, key: '付款狀態' })),
-    ...shipOpts.map(o => ({ label: `發貨→${o}`, field: 'ship', val: o, key: '發貨狀態' })),
+    ...buyOpts.map(o => ({ label: o, field: 'buy', val: o, key: '購買狀態', cls: 'buy' })),
+    ...payOpts.map(o => ({ label: o, field: 'pay', val: o, key: '付款狀態', cls: 'pay' })),
+    ...shipOpts.map(o => ({ label: o, field: 'ship', val: o, key: '發貨狀態', cls: 'ship' })),
   ];
-
-  document.getElementById('batchActions').innerHTML = count === 0
-    ? '<span style="font-size:13px;color:var(--hint)">請先選取需求單</span>'
-    : actions.map((a,i) => `<button class="batch-btn" onclick="batchUpdate(${i})">${a.label}</button>`).join('');
-
-  // Store actions for reference
   window._batchActions = actions;
+
+  const disabled = count === 0;
+  document.getElementById('batchActions').innerHTML = `
+    <div class="batch-group">
+      <div class="batch-group-label">購買狀態變為</div>
+      <div class="batch-opts">
+        ${buyOpts.map((o,i)=>`<button class="batch-opt buy${disabled?' disabled':''}" ${disabled?'disabled':''} onclick="batchUpdate(${i})">${o}</button>`).join('')}
+      </div>
+    </div>
+    <div class="batch-group">
+      <div class="batch-group-label">付款狀態變為</div>
+      <div class="batch-opts">
+        ${payOpts.map((o,i)=>`<button class="batch-opt pay${disabled?' disabled':''}" ${disabled?'disabled':''} onclick="batchUpdate(${buyOpts.length+i})">${o}</button>`).join('')}
+      </div>
+    </div>
+    <div class="batch-group">
+      <div class="batch-group-label">發貨狀態變為</div>
+      <div class="batch-opts">
+        ${shipOpts.map((o,i)=>`<button class="batch-opt ship${disabled?' disabled':''}" ${disabled?'disabled':''} onclick="batchUpdate(${buyOpts.length+payOpts.length+i})">${o}</button>`).join('')}
+      </div>
+    </div>
+  `;
 }
 
 async function batchUpdate(i){
@@ -629,15 +650,15 @@ async function batchUpdate(i){
 
 loadAll();
 </script>
-<div class="batch-bar" id="batchBar">
-  <div class="batch-top">
+<div class="batch-panel" id="batchBar">
+  <div class="batch-panel-top">
     <span class="batch-count" id="batchCount">已選 0 筆</span>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="batch-cancel" onclick="selectAll()">全選</button>
-      <button class="batch-cancel" onclick="clearSelect()">取消</button>
+    <div class="batch-ctrl">
+      <button onclick="selectAll()">全選</button>
+      <button onclick="clearSelect()">取消全選</button>
     </div>
   </div>
-  <div class="batch-actions" id="batchActions"></div>
+  <div id="batchActions"></div>
 </div>
 </body>
 </html>
