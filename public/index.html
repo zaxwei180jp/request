@@ -247,6 +247,7 @@
 const API = '/api/notion';
 let records = [];
 let schema = {};
+let shiptoList = []; // [{id, code, name}]
 let activeFilter = 'all';
 let viewingId = null;
 
@@ -275,6 +276,13 @@ function makeSelect(schemaKey, currentVal, elId) {
   return `<select class="d-select" id="${elId}">
     <option value="">— 選擇 —</option>
     ${opts.map(o => `<option value="${o}"${o === currentVal ? ' selected' : ''}>${o}</option>`).join('')}
+  </select>`;
+}
+
+function makeShiptoSelect(currentCode, elId) {
+  return `<select class="d-select" id="${elId}">
+    <option value="">— 選擇 —</option>
+    ${shiptoList.map(s => `<option value="${s.id}"${s.code === currentCode ? ' selected' : ''}>${s.code} ${s.name}</option>`).join('')}
   </select>`;
 }
 
@@ -307,7 +315,14 @@ async function loadRecords() {
   }
 }
 
-async function loadAll() { await Promise.all([loadSchema(), loadRecords()]); }
+async function loadShipto() {
+  try {
+    const res = await fetch(API + '?action=shipto_list');
+    shiptoList = await res.json();
+  } catch(e) { console.error('Shipto load error', e); }
+}
+
+async function loadAll() { await Promise.all([loadSchema(), loadRecords(), loadShipto()]); }
 
 function badgeClass(s) {
   return {'完成':'b-done','未開始':'b-pending','進行中':'b-pending','已出貨':'b-shipped','已送達':'b-arrived','取消':'b-cancel','集貨中':'b-pending','待付款':'b-pending','未付款':'b-pending'}[s] || 'b-pending';
@@ -405,10 +420,14 @@ function openAdd() {
   ['f_client','f_code','f_name','f_qty','f_price','f_quote','f_submit','f_done'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f_id').value = nextReId();
   document.getElementById('f_submit').value = new Date().toISOString().slice(0,10);
-  ['f_shop','f_shipto','f_type','f_attr','f_buy','f_pay','f_ship'].forEach(id => {
-    const keyMap = {f_shop:'商店',f_shipto:'發貨客戶',f_type:'商品類型',f_attr:'購買屬性',f_buy:'購買狀態',f_pay:'付款狀態',f_ship:'發貨狀態'};
+  ['f_shop','f_type','f_attr','f_buy','f_pay','f_ship'].forEach(id => {
+    const keyMap = {f_shop:'商店',f_type:'商品類型',f_attr:'購買屬性',f_buy:'購買狀態',f_pay:'付款狀態',f_ship:'發貨狀態'};
     populateSelect(id, keyMap[id], '');
   });
+  // populate shipto from shiptoList
+  const fShipto = document.getElementById('f_shipto');
+  fShipto.innerHTML = '<option value="">— 選擇 —</option>' +
+    shiptoList.map(s => `<option value="${s.id}">${s.code} ${s.name}</option>`).join('');
   document.getElementById('formOverlay').classList.add('open');
 }
 function closeForm() { document.getElementById('formOverlay').classList.remove('open'); }
@@ -425,7 +444,7 @@ async function saveNew() {
     price:  document.getElementById('f_price').value || 0,
     quote:  document.getElementById('f_quote').value || 0,
     shop:   document.getElementById('f_shop').value,
-    shipto: document.getElementById('f_shipto').value,
+    shiptoPageId: document.getElementById('f_shipto').value,
     type:   document.getElementById('f_type').value,
     attr:   document.getElementById('f_attr').value,
     submit: document.getElementById('f_submit').value,
@@ -474,8 +493,8 @@ function openDetail(pageId) {
           ${makeSelect('商店', r.shop, 'd_shop')}
         </div>
         <div class="d-field">
-          <div class="d-field-label">發貨客戶</div>
-          <div style="font-size:15px;font-weight:500;color:var(--text)">${r.shipto || '—'}${r.shiptoName ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">${r.shiptoName}</div>` : ''}</div>
+          <div class="d-field-label">發貨客戶${r.shiptoName ? `<span style="float:right;font-weight:600;color:var(--text)">${r.shiptoName}</span>` : ''}</div>
+          ${makeShiptoSelect(r.shipto, 'd_shipto')}
         </div>
         <div class="d-field">
           <div class="d-field-label">商品類型</div>
@@ -577,7 +596,7 @@ async function saveDetail() {
     price:  document.getElementById('d_price').value || 0,
     quote:  document.getElementById('d_quote').value || 0,
     shop:   document.getElementById('d_shop').value,
-    shipto: document.getElementById('d_shipto').value,
+    shiptoPageId: document.getElementById('d_shipto').value,
     type:   document.getElementById('d_type').value,
     attr:   document.getElementById('d_attr').value,
     buy:    document.getElementById('d_buy').dataset.value || document.getElementById('d_buy').textContent.trim(),
