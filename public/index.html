@@ -379,7 +379,7 @@ function renderList() {
   const el = document.getElementById('list');
   if (!data.length) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>沒有符合的需求單</p></div>`; return; }
   el.innerHTML = data.map(r => `
-    <div class="card" onclick="openDetail('${r._pageId}')">
+    <div class="card" data-id="${r._pageId}" onclick="openDetail(this.dataset.id)">
       <div class="card-top">
         <span class="card-id">${r.id}</span>
         <div class="card-badges">
