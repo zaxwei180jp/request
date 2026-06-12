@@ -84,19 +84,19 @@ export default async function handler(req) {
         return json(mapped);
       }
 
-      // Collect all unique relation page IDs for 出貨單 (R_%3D%3A)
+      // Collect all unique relation page IDs for 出貨單 (R_%3D%3A) and 發貨客戶 (QUXO)
       const packPageIds = new Set();
+      const shiptoPageIds = new Set();
       for (const page of allResults) {
         const packProp = Object.values(page.properties).find(v => v.id === 'R_%3D%3A');
-        if (packProp?.relation?.length) {
-          packProp.relation.forEach(r => packPageIds.add(r.id));
-        }
+        if (packProp?.relation?.length) packProp.relation.forEach(r => packPageIds.add(r.id));
+        const shiptoProp = Object.values(page.properties).find(v => v.id === 'QUXO');
+        if (shiptoProp?.relation?.length) shiptoProp.relation.forEach(r => shiptoPageIds.add(r.id));
       }
 
-      // Fetch relation page titles in parallel (batch up to 20)
+      // Fetch pack titles
       const packTitles = {};
-      const ids = [...packPageIds];
-      await Promise.all(ids.map(async (id) => {
+      await Promise.all([...packPageIds].map(async (id) => {
         try {
           const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
           const page = await res.json();
@@ -105,7 +105,24 @@ export default async function handler(req) {
         } catch { packTitles[id] = ''; }
       }));
 
-      return json(allResults.map(page => pageToRecord(page, packTitles)));
+      // Fetch shipto pages — get both 客戶編號 (title) and 姓名 (rich_text)
+      const shiptoInfo = {};
+      await Promise.all([...shiptoPageIds].map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const props = page.properties || {};
+          const titleProp = Object.values(props).find(v => v.type === 'title');
+          const nameProp = Object.values(props).find(v => v.type === 'rich_text' || v.type === 'rich_text');
+          const code = titleProp?.title?.[0]?.plain_text || '';
+          // 姓名 is a rich_text field — find by checking all rich_text props
+          const richTexts = Object.values(props).filter(v => v.type === 'rich_text');
+          const nameVal = richTexts.map(p => p.rich_text?.[0]?.plain_text).find(v => v) || '';
+          shiptoInfo[id] = { code, name: nameVal };
+        } catch { shiptoInfo[id] = { code: '', name: '' }; }
+      }));
+
+      return json(allResults.map(page => pageToRecord(page, packTitles, shiptoInfo)));
     }
 
     // CREATE
@@ -118,7 +135,7 @@ export default async function handler(req) {
       });
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message, detail: data }, 500);
-      return json(pageToRecord(data, {}));
+      return json(pageToRecord(data, {}, {}));
     }
 
     // UPDATE
@@ -131,7 +148,7 @@ export default async function handler(req) {
         body: JSON.stringify({ properties: recordToProperties(body) }),
       });
       const data = await res.json();
-      return json(pageToRecord(data, {}));
+      return json(pageToRecord(data, {}, {}));
     }
 
     // DELETE
@@ -169,14 +186,20 @@ function byId(props, id) {
   return Object.values(props).find(v => v.id === id || v.id === decodeURIComponent(id));
 }
 
-function pageToRecord(page, packTitles = {}) {
-  if (!page || !page.properties) return { _pageId: '', id: '', name: '', client: '', code: '', qty: 0, price: 0, quote: 0, total: 0, shop: '', shipto: '', type: '', attr: '', submit: '', done: '', pay: '', ship: '', buy: '', pack: '', _packIds: [] };
+function pageToRecord(page, packTitles = {}, shiptoInfo = {}) {
+  if (!page || !page.properties) return { _pageId: '', id: '', name: '', client: '', code: '', qty: 0, price: 0, quote: 0, total: 0, shop: '', shipto: '', shiptoName: '', type: '', attr: '', submit: '', done: '', pay: '', ship: '', buy: '', pack: '', _packIds: [] };
   const p = page.properties || {};
   const g = (id) => extractValue(byId(p, id));
 
   const packProp = byId(p, 'R_%3D%3A');
   const packIds = packProp?.relation || [];
   const pack = packIds.map(r => (packTitles[r.id] || '')).filter(Boolean).join(', ');
+
+  // 發貨客戶 relation (QUXO)
+  const shiptoProp = byId(p, 'QUXO');
+  const shiptoIds = shiptoProp?.relation || [];
+  const shiptoCode = shiptoIds.map(r => shiptoInfo[r.id]?.code || '').filter(Boolean).join(', ');
+  const shiptoName = shiptoIds.map(r => shiptoInfo[r.id]?.name || '').filter(Boolean).join(', ');
 
   return {
     _pageId: page.id,
@@ -189,7 +212,8 @@ function pageToRecord(page, packTitles = {}) {
     quote:   g('cAk%5C') || 0,
     total:   g('cECx') || 0,
     shop:    g('SAe%60') || '',
-    shipto:  g('TtRR') || '',
+    shipto:  shiptoCode || g('TtRR') || '',
+    shiptoName,
     type:    g('%5Dyoq') || '',
     attr:    g('_o~%7B') || '',
     submit:  g('uF%3AY') || '',
