@@ -66,12 +66,29 @@ export default async function handler(req) {
       });
       const data = await res.json();
       if (!data.results) return json({ error: 'Shipto DB error', detail: data }, 500);
+
+      // debug: show all field keys and types of first result
+      if (url.searchParams.get('debug') === '1' && data.results.length > 0) {
+        const props = data.results[0].properties;
+        const info = {};
+        for (const [k, v] of Object.entries(props)) {
+          info[k] = { id: v.id, type: v.type, val:
+            v.type === 'title' ? v.title?.[0]?.plain_text :
+            v.type === 'rich_text' ? v.rich_text?.[0]?.plain_text :
+            v.type === 'select' ? v.select?.name : null
+          };
+        }
+        return json(info);
+      }
+
       const list = data.results.map(page => {
         const props = page.properties || {};
         const titleProp = Object.values(props).find(v => v.type === 'title');
         const code = titleProp?.title?.[0]?.plain_text || '';
-        const richTexts = Object.values(props).filter(v => v.type === 'rich_text');
-        const name = richTexts.map(p => p.rich_text?.[0]?.plain_text).find(v => v) || '';
+        // Find name field: look for rich_text field whose key contains 姓名
+        const nameKey = Object.keys(props).find(k => props[k].type === 'rich_text' && (k.includes('姓') || k.includes('名') || k.toLowerCase().includes('name')));
+        const nameProp = nameKey ? props[nameKey] : null;
+        const name = nameProp?.rich_text?.[0]?.plain_text || '';
         return { id: page.id, code, name };
       }).filter(r => r.code);
       return json(list);
