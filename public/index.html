@@ -467,8 +467,10 @@ async function saveNew() {
 // ── DETAIL (inline edit) ──
 function openDetail(pageId) {
   viewingId = pageId;
-  const r = records.find(x => x._pageId === pageId);
-  if (!r) return;
+  // Try exact match first, then try trimmed/decoded
+  let r = records.find(x => x._pageId === pageId);
+  if (!r) r = records.find(x => String(x._pageId).trim() === String(pageId).trim());
+  if (!r) { showToast('找不到資料：' + pageId.slice(0,8)); return; }
   document.getElementById('d_id').textContent = r.id;
   const total = (Number(r.price||0) * Number(r.qty||1)).toLocaleString();
 
