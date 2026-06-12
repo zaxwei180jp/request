@@ -131,6 +131,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
 .d-big{font-size:20px;font-weight:700;color:var(--purple)}
 .d-ro{font-size:15px;color:var(--muted)}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 10px;background:var(--bg-card);border-bottom:.5px solid var(--border)}
+.filter-row::-webkit-scrollbar{display:none}
+.fchip{border:.5px solid var(--border2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--bg-card);color:var(--muted);flex-shrink:0}
+.fchip.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.filter-group{display:flex;flex-direction:column;gap:0;border-bottom:.5px solid var(--border)}
+.filter-group:last-child{border-bottom:none}
 .batch-panel{display:none;background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;flex-direction:column;gap:14px}
 .batch-panel.open{display:flex}
 .batch-panel-top{display:flex;align-items:center;justify-content:space-between}
@@ -180,6 +186,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input type="text" id="srchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll()">
   </div>
+  <div class="filter-row" id="filterRow"></div>
 </div>
 
 <div class="stats" id="statsBar"></div>
@@ -260,6 +267,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const API = '/api/notion';
 let records = [], schema = {}, shiptoList = [];
 let activeFilter = 'all', viewingId = null, selectedIds = new Set(), selectMode = false;
+let statusFilters = { buy: '', pay: '', ship: '' };
 
 // ── UTILS ──
 function lbar(p){ const b=document.getElementById('lbar'); b.style.width=p+'%'; if(p>=100)setTimeout(()=>b.style.width='0',400); }
@@ -314,6 +322,9 @@ function filtered(){
     if(activeFilter==='buy_未開始') return r.buy==='未開始';
     if(activeFilter==='pay_未付款') return r.pay==='未付款';
     if(activeFilter==='ship_集貨中') return r.ship==='集貨中';
+    if(statusFilters.buy  && r.buy  !== statusFilters.buy)  return false;
+    if(statusFilters.pay  && r.pay  !== statusFilters.pay)  return false;
+    if(statusFilters.ship && r.ship !== statusFilters.ship) return false;
     return true;
   });
 }
@@ -370,7 +381,31 @@ function renderList(){
     </div>`).join('');
 }
 
-function renderAll(){ renderStats(); renderList(); }
+function renderFilters(){
+  const buyOpts  = schema['購買狀態']?.options || [];
+  const payOpts  = schema['付款狀態']?.options || [];
+  const shipOpts = schema['發貨狀態']?.options || [];
+
+  const rows = [
+    { key:'buy',  label:'購買', opts: buyOpts  },
+    { key:'pay',  label:'付款', opts: payOpts  },
+    { key:'ship', label:'發貨', opts: shipOpts },
+  ];
+
+  document.getElementById('filterRow').innerHTML = rows.map(row =>
+    row.opts.map(o => {
+      const on = statusFilters[row.key] === o;
+      return `<span class="fchip${on?' on':''}" onclick="toggleFilter('${row.key}','${o}')">${row.label}:${o}</span>`;
+    }).join('')
+  ).join('');
+}
+
+function toggleFilter(key, val){
+  statusFilters[key] = statusFilters[key] === val ? '' : val;
+  renderAll();
+}
+
+function renderAll(){ renderStats(); renderFilters(); renderList(); }
 
 // ── CARD CLICK (index-based, no string ID issues) ──
 function cardClick(i){
