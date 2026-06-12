@@ -378,8 +378,10 @@ function renderList() {
   const data = filtered();
   const el = document.getElementById('list');
   if (!data.length) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>沒有符合的需求單</p></div>`; return; }
-  el.innerHTML = data.map(r => `
-    <div class="card" data-id="${r._pageId}">
+  // Populate global map
+  data.forEach((r, i) => { window._recordMap[i] = r._pageId; });
+  el.innerHTML = data.map((r, i) => `
+    <div class="card" onclick="window._openCard(${i})">
       <div class="card-top">
         <span class="card-id">${r.id}</span>
         <div class="card-badges">
@@ -406,6 +408,9 @@ function renderList() {
 }
 
 function renderAll() { renderStats(); renderList(); }
+
+// Global record map for click access
+window._recordMap = {};
 
 
 
@@ -631,13 +636,11 @@ async function deleteRecord() {
   } catch(e) { showToast('❌ 刪除失敗'); }
 }
 
-loadAll().then(() => {
-  document.getElementById('list').addEventListener('click', function(e) {
-    const card = e.target.closest('[data-id]');
-    if (!card) return;
-    openDetail(card.dataset.id);
-  });
-});
+window._openCard = function(i) {
+  const pageId = window._recordMap[i];
+  if (pageId) openDetail(pageId);
+};
+loadAll();
 </script>
 </body>
 </html>
