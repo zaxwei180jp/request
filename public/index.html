@@ -249,8 +249,11 @@ async function loadSchema(){
   schema = await res.json();
 }
 async function loadShipto(){
-  const res = await fetch(API+'?action=shipto_list');
-  shiptoList = await res.json();
+  try{
+    const res = await fetch(API+'?action=shipto_list');
+    const data = await res.json();
+    shiptoList = Array.isArray(data) ? data : [];
+  } catch(e){ shiptoList = []; }
 }
 async function loadRecords(){
   lbar(30);
