@@ -410,7 +410,11 @@ function renderAll() { renderStats(); renderList(); }
 // Event delegation for card clicks
 document.getElementById('list').addEventListener('click', function(e) {
   const card = e.target.closest('.card');
-  if (card && card.dataset.id) openDetail(card.dataset.id);
+  if (!card) return;
+  const id = card.dataset.id;
+  if (!id) { showToast('無 ID'); return; }
+  if (records.length === 0) { showToast('資料未載入'); return; }
+  openDetail(id);
 });
 
 // ── ADD FORM ──
