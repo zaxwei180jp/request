@@ -265,9 +265,14 @@ async function loadRecords(){
 }
 async function loadAll(){
   try{
-    await Promise.all([loadSchema(), loadShipto(), loadRecords()]);
+    // Load each independently so one failure doesn't block others
+    await Promise.allSettled([
+      loadSchema().catch(e=>console.error('schema',e)),
+      loadShipto().catch(e=>console.error('shipto',e)),
+      loadRecords().catch(e=>{ toast('⚠️ 資料載入失敗'); document.getElementById('hdrSub').textContent='載入失敗'; })
+    ]);
     renderAll();
-  } catch(e){ toast('⚠️ '+e.message); document.getElementById('hdrSub').textContent='載入失敗'; }
+  } catch(e){ toast('⚠️ '+e.message); }
 }
 
 // ── RENDER ──
