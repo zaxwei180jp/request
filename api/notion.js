@@ -3,6 +3,7 @@ export const config = { runtime: 'edge' };
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const NOTION_VERSION = '2022-06-28';
+const SHIPTO_DB_ID = '2fd5bfd83387803fbb46e3dca0ea739b';
 
 const notionHeaders = () => ({
   'Authorization': `Bearer ${NOTION_TOKEN}`,
@@ -54,6 +55,26 @@ export default async function handler(req) {
         }
       }
       return json(schema);
+    }
+
+    // SHIPTO LIST — fetch all customers from 發貨資料 DB
+    if (req.method === 'GET' && action === 'shipto_list') {
+      const res = await fetch(`https://api.notion.com/v1/databases/${SHIPTO_DB_ID}/query`, {
+        method: 'POST',
+        headers: notionHeaders(),
+        body: JSON.stringify({ page_size: 100 }),
+      });
+      const data = await res.json();
+      if (!data.results) return json({ error: 'Shipto DB error', detail: data }, 500);
+      const list = data.results.map(page => {
+        const props = page.properties || {};
+        const titleProp = Object.values(props).find(v => v.type === 'title');
+        const code = titleProp?.title?.[0]?.plain_text || '';
+        const richTexts = Object.values(props).filter(v => v.type === 'rich_text');
+        const name = richTexts.map(p => p.rich_text?.[0]?.plain_text).find(v => v) || '';
+        return { id: page.id, code, name };
+      }).filter(r => r.code);
+      return json(list);
     }
 
     // LIST — fetch all with pagination, resolve relations
@@ -246,8 +267,8 @@ function recordToProperties(r) {
   if (r.quote  !== undefined) props['cAk\\'] = { number: Number(r.quote) || 0 };
   // 商店 SAe` select
   if (r.shop)   props['SAe`']  = { select: { name: r.shop   } };
-  // 發貨客戶 TtRR select
-  if (r.shipto) props['TtRR']  = { select: { name: r.shipto } };
+  // 發貨客戶 QUXO relation — r.shiptoPageId is the page id
+  if (r.shiptoPageId) props['QUXO'] = { relation: [{ id: r.shiptoPageId }] };
   // 商品類型 ]yoq select
   if (r.type)   props[']yoq']  = { select: { name: r.type   } };
   // 購買屬性 _o~{ select
