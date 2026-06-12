@@ -321,7 +321,7 @@ function renderList(){
   const el = document.getElementById('list');
   if(!data.length){ el.innerHTML=`<div class="empty">📭<p>沒有符合的需求單</p></div>`; return; }
   el.innerHTML = data.map((r,i)=>`
-    <div class="card" data-idx="${i}">
+    <div class="card" onclick="openDetail(this.dataset.id)" data-id="${r._pageId}">
       <div class="card-top">
         <span class="card-id">${r.id}</span>
         <div class="card-badges">
@@ -456,9 +456,9 @@ function openDetail(pageId){
     <div class="dc">
       <div class="dch">狀態</div>
       <div class="dgrid">
-        <div class="df"><div class="df-l">購買狀態</div><button class="sbtn ${scls(r.buy)}" id="d_buy" data-val="${r.buy||''}" data-key="購買狀態">${r.buy||'— 選擇 —'}</button></div>
-        <div class="df"><div class="df-l">付款狀態</div><button class="sbtn ${scls(r.pay)}" id="d_pay" data-val="${r.pay||''}" data-key="付款狀態">${r.pay||'— 選擇 —'}</button></div>
-        <div class="df full"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" data-key="發貨狀態">${r.ship||'— 選擇 —'}</button></div>
+        <div class="df"><div class="df-l">購買狀態</div><button class="sbtn ${scls(r.buy)}" id="d_buy" data-val="${r.buy||''}" onclick="cycleStatus('d_buy','購買狀態')">${r.buy||'— 選擇 —'}</button></div>
+        <div class="df"><div class="df-l">付款狀態</div><button class="sbtn ${scls(r.pay)}" id="d_pay" data-val="${r.pay||''}" onclick="cycleStatus('d_pay','付款狀態')">${r.pay||'— 選擇 —'}</button></div>
+        <div class="df full"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'— 選擇 —'}</button></div>
         <div class="df full" style="border-bottom:none"><div class="df-l">出貨單</div><span class="d-ro">${r.pack||'—'}</span></div>
       </div>
     </div>
@@ -519,24 +519,6 @@ async function deleteRecord(){
     toast('🗑️ 已刪除'); closeDetail(); await loadRecords(); renderAll();
   } catch(e){ toast('❌ 刪除失敗'); }
 }
-
-// Card click
-document.getElementById('list').addEventListener('click', function(e){
-  const card = e.target.closest('.card');
-  if(!card) return;
-  const idx = card.dataset.idx;
-  if(idx === undefined) return;
-  cardClick(parseInt(idx));
-});
-
-// Status button click
-document.getElementById('dbody').addEventListener('click', function(e){
-  const btn = e.target.closest('.sbtn');
-  if(!btn || !btn.dataset.key) return;
-  const key = btn.dataset.key;
-  const id = btn.id;
-  cycleStatus(id, key);
-});
 
 loadAll();
 </script>
