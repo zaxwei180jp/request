@@ -131,6 +131,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
 .d-big{font-size:20px;font-weight:700;color:var(--purple)}
 .d-ro{font-size:15px;color:var(--muted)}
+.batch-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg-card);border-top:.5px solid var(--border);padding:12px 14px;display:none;flex-direction:column;gap:10px;z-index:150;box-shadow:0 -4px 20px rgba(0,0,0,0.15)}
+.batch-bar.open{display:flex}
+.batch-top{display:flex;align-items:center;justify-content:space-between}
+.batch-count{font-size:14px;font-weight:600;color:var(--purple)}
+.batch-actions{display:flex;gap:8px;overflow-x:auto}
+.batch-actions::-webkit-scrollbar{display:none}
+.batch-btn{flex-shrink:0;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);white-space:nowrap}
+.batch-btn:active{opacity:.75}
+.batch-cancel{background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:4px 8px}
+.card.selected{border-color:var(--purple);background:rgba(83,74,183,.06)}
+.card-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .15s}
+.card.selected .card-check{background:var(--purple);border-color:var(--purple)}
+.card.selected .card-check::after{content:'✓';color:#fff;font-size:12px;font-weight:700}
+.btn-select{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text)}
+.btn-select.on{background:var(--purple);border-color:var(--purple);color:#fff}
 .ddel{display:flex;padding:0 14px 30px}
 .btn-del{flex:1;background:#FCEBEB;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:13px;font-size:15px;cursor:pointer;color:#A32D2D;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
 </style>
@@ -150,6 +165,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="btn-ref" onclick="loadAll()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
+      <button class="btn-select" id="btnSelect" onclick="toggleSelectMode()">選取</button>
       <button class="btn-add" onclick="openAdd()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
       </button>
@@ -237,7 +253,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 const API = '/api/notion';
 let records = [], schema = {}, shiptoList = [];
-let activeFilter = 'all', viewingId = null;
+let activeFilter = 'all', viewingId = null, selectedIds = new Set(), selectMode = false;
 
 // ── UTILS ──
 function lbar(p){ const b=document.getElementById('lbar'); b.style.width=p+'%'; if(p>=100)setTimeout(()=>b.style.width='0',400); }
@@ -321,8 +337,9 @@ function renderList(){
   const el = document.getElementById('list');
   if(!data.length){ el.innerHTML=`<div class="empty">📭<p>沒有符合的需求單</p></div>`; return; }
   el.innerHTML = data.map((r,i)=>`
-    <div class="card" onclick="openDetail(this.dataset.id)" data-id="${r._pageId}">
+    <div class="card${selectedIds.has(r._pageId)?' selected':''}" data-id="${r._pageId}" onclick="handleCardClick(event, '${r._pageId}')">
       <div class="card-top">
+        <div class="card-check" style="${selectMode?'':'display:none'}"></div>
         <span class="card-id">${r.id}</span>
         <div class="card-badges">
           ${r.buy?`<span class="bl">購買</span>${badge(r.buy)}`:''}
@@ -520,7 +537,107 @@ async function deleteRecord(){
   } catch(e){ toast('❌ 刪除失敗'); }
 }
 
+// ── SELECT MODE ──
+function toggleSelectMode(){
+  selectMode = !selectMode;
+  selectedIds.clear();
+  const btn = document.getElementById('btnSelect');
+  btn.classList.toggle('on', selectMode);
+  btn.textContent = selectMode ? '取消選取' : '選取';
+  updateBatchBar();
+  renderList();
+}
+
+function handleCardClick(e, pageId){
+  if(selectMode){
+    e.stopPropagation();
+    if(selectedIds.has(pageId)) selectedIds.delete(pageId);
+    else selectedIds.add(pageId);
+    updateBatchBar();
+    renderList();
+  } else {
+    openDetail(pageId);
+  }
+}
+
+function selectAll(){
+  const data = filtered();
+  data.forEach(r => selectedIds.add(r._pageId));
+  updateBatchBar();
+  renderList();
+}
+
+function clearSelect(){
+  selectedIds.clear();
+  updateBatchBar();
+  renderList();
+}
+
+function updateBatchBar(){
+  const bar = document.getElementById('batchBar');
+  const count = selectedIds.size;
+  document.getElementById('batchCount').textContent = `已選 ${count} 筆`;
+  bar.classList.toggle('open', selectMode);
+
+  // Build batch action buttons from schema
+  const buyOpts = schema['購買狀態']?.options || [];
+  const payOpts = schema['付款狀態']?.options || [];
+  const shipOpts = schema['發貨狀態']?.options || [];
+
+  const actions = [
+    ...buyOpts.map(o => ({ label: `購買→${o}`, field: 'buy', val: o, key: '購買狀態' })),
+    ...payOpts.map(o => ({ label: `付款→${o}`, field: 'pay', val: o, key: '付款狀態' })),
+    ...shipOpts.map(o => ({ label: `發貨→${o}`, field: 'ship', val: o, key: '發貨狀態' })),
+  ];
+
+  document.getElementById('batchActions').innerHTML = count === 0
+    ? '<span style="font-size:13px;color:var(--hint)">請先選取需求單</span>'
+    : actions.map((a,i) => `<button class="batch-btn" onclick="batchUpdate(${i})">${a.label}</button>`).join('');
+
+  // Store actions for reference
+  window._batchActions = actions;
+}
+
+async function batchUpdate(i){
+  const action = window._batchActions[i];
+  if(!action || selectedIds.size === 0) return;
+  if(!confirm(`確定要將 ${selectedIds.size} 筆的「${action.key}」改為「${action.val}」嗎？`)) return;
+
+  const ids = [...selectedIds];
+  const btn = document.querySelectorAll('.batch-btn')[i];
+  if(btn){ btn.disabled = true; btn.textContent = '更新中…'; }
+
+  let ok = 0, fail = 0;
+  await Promise.all(ids.map(async pageId => {
+    try{
+      const body = {};
+      if(action.field === 'buy')  body.buy  = action.val;
+      if(action.field === 'pay')  body.pay  = action.val;
+      if(action.field === 'ship') body.ship = action.val;
+      const res = await fetch(`${API}?action=update&id=${pageId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const d = await res.json();
+      if(d.error) fail++; else ok++;
+    } catch(e){ fail++; }
+  }));
+
+  toast(fail > 0 ? `✅ ${ok} 筆成功，❌ ${fail} 筆失敗` : `✅ ${ok} 筆已更新`);
+  selectedIds.clear();
+  await loadRecords();
+  renderAll();
+  updateBatchBar();
+}
+
 loadAll();
 </script>
+<div class="batch-bar" id="batchBar">
+  <div class="batch-top">
+    <span class="batch-count" id="batchCount">已選 0 筆</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="batch-cancel" onclick="selectAll()">全選</button>
+      <button class="batch-cancel" onclick="clearSelect()">取消</button>
+    </div>
+  </div>
+  <div class="batch-actions" id="batchActions"></div>
+</div>
 </body>
 </html>
