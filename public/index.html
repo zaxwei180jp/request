@@ -379,7 +379,7 @@ function renderList() {
       <div class="card-meta">
         ${r.client ? `<span class="card-meta-chip highlight"><div class="chip-label">委託人</div><div class="chip-val">${r.client}</div></span>` : ''}
         ${r.shop ? `<span class="card-meta-chip"><div class="chip-label">商店</div><div class="chip-val">${r.shop}</div></span>` : ''}
-        ${r.shipto ? `<span class="card-meta-chip"><div class="chip-label">發貨客戶</div><div class="chip-val">${r.shipto}</div></span>` : ''}
+        ${r.shipto ? `<span class="card-meta-chip"><div class="chip-label">發貨客戶</div><div class="chip-val">${r.shipto}${r.shiptoName ? ` ${r.shiptoName}` : ''}</div></span>` : ''}
         ${r.qty ? `<span class="card-meta-chip"><div class="chip-label">數量</div><div class="chip-val" style="font-size:18px">${r.qty}</div></span>` : ''}
       </div>
       <div class="card-footer">
@@ -475,7 +475,7 @@ function openDetail(pageId) {
         </div>
         <div class="d-field">
           <div class="d-field-label">發貨客戶</div>
-          ${makeSelect('發貨客戶', r.shipto, 'd_shipto')}
+          <div style="font-size:15px;font-weight:500;color:var(--text)">${r.shipto || '—'}${r.shiptoName ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">${r.shiptoName}</div>` : ''}</div>
         </div>
         <div class="d-field">
           <div class="d-field-label">商品類型</div>
