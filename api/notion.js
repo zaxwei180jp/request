@@ -85,9 +85,8 @@ export default async function handler(req) {
         const props = page.properties || {};
         const titleProp = Object.values(props).find(v => v.type === 'title');
         const code = titleProp?.title?.[0]?.plain_text || '';
-        // Find name field: look for rich_text field whose key contains 姓名
-        const nameKey = Object.keys(props).find(k => props[k].type === 'rich_text' && (k.includes('姓') || k.includes('名') || k.toLowerCase().includes('name')));
-        const nameProp = nameKey ? props[nameKey] : null;
+        // 姓名 ID = ~zOg
+        const nameProp = Object.values(props).find(v => v.id === '~zOg');
         const name = nameProp?.rich_text?.[0]?.plain_text || '';
         return { id: page.id, code, name };
       }).filter(r => r.code);
@@ -154,8 +153,9 @@ export default async function handler(req) {
           const nameProp = Object.values(props).find(v => v.type === 'rich_text' || v.type === 'rich_text');
           const code = titleProp?.title?.[0]?.plain_text || '';
           // 姓名 is a rich_text field — find by checking all rich_text props
-          const richTexts = Object.values(props).filter(v => v.type === 'rich_text');
-          const nameVal = richTexts.map(p => p.rich_text?.[0]?.plain_text).find(v => v) || '';
+            // 姓名 ID = ~zOg
+          const namePropR = Object.values(props).find(v => v.id === '~zOg');
+          const nameVal = namePropR?.rich_text?.[0]?.plain_text || '';
           shiptoInfo[id] = { code, name: nameVal };
         } catch { shiptoInfo[id] = { code: '', name: '' }; }
       }));
