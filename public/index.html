@@ -177,6 +177,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
       <button class="btn-select" id="btnSelect" onclick="toggleSelectMode()">選取</button>
+      <button class="btn-select" id="btnSelAll" style="display:none" onclick="selectAll()">全選</button>
+      <button class="btn-select" id="btnSelNone" style="display:none" onclick="clearSelect()">取消</button>
       <button class="btn-add" onclick="openAdd()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
       </button>
@@ -584,7 +586,9 @@ function toggleSelectMode(){
   selectedIds.clear();
   const btn = document.getElementById('btnSelect');
   btn.classList.toggle('on', selectMode);
-  btn.textContent = selectMode ? '取消選取' : '選取';
+  btn.textContent = selectMode ? '退出' : '選取';
+  document.getElementById('btnSelAll').style.display  = selectMode ? '' : 'none';
+  document.getElementById('btnSelNone').style.display = selectMode ? '' : 'none';
   updateBatchBar();
   renderList();
 }
@@ -689,8 +693,8 @@ loadAll();
   <div class="batch-panel-top">
     <span class="batch-count" id="batchCount">已選 0 筆</span>
     <div class="batch-ctrl">
-      <button onclick="selectAll()">全選</button>
-      <button onclick="clearSelect()">取消全選</button>
+      <button onclick="selectAll()">✓ 全部選取</button>
+      <button onclick="clearSelect()">✕ 全部取消</button>
     </div>
   </div>
   <div id="batchActions"></div>
