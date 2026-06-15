@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>貨物運費</title>
+<style>
+:root{
+  --purple:#534AB7;--purple-light:#EEEDFE;
+  --bg:#F5F5F7;--bg-card:#fff;--bg2:#f0f0f5;
+  --text:#1a1a1a;--muted:#6e6e80;--hint:#a0a0b0;
+  --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.18);
+  --r:14px;--rs:8px;--shadow:0 1px 4px rgba(0,0,0,0.07);
+  --green:#0F6E56;--green-bg:#E1F5EE;
+  --red:#993C1D;--red-bg:#FAECE7;
+  --yellow:#854F0B;--yellow-bg:#FAEEDA;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111114;--bg-card:#1c1c22;--bg2:#26262e;
+  --text:#f0f0f5;--muted:#9090a8;--hint:#55556a;
+  --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.16);
+  --shadow:0 1px 4px rgba(0,0,0,0.4);
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
+
+.hdr{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hdr-title{font-size:20px;font-weight:600}
+.hdr-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.btn-ref{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:0 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center;height:40px}
+.btn-icon{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:0 12px;cursor:pointer;color:var(--text);display:flex;align-items:center;height:40px;font-size:13px;font-weight:500;white-space:nowrap;text-decoration:none}
+.top-r{display:flex;gap:6px;align-items:center}
+
+.srch{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px}
+.srch svg{flex-shrink:0;opacity:.45}
+.srch input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
+.srch input::placeholder{color:var(--hint)}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filter-row::-webkit-scrollbar{display:none}
+.fchip{border:.5px solid var(--border2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--bg-card);color:var(--muted);flex-shrink:0}
+.fchip.on{background:var(--purple);border-color:var(--purple);color:#fff}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px}
+.stat{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--rs);padding:10px;text-align:center}
+.stat-n{font-size:18px;font-weight:700;color:var(--purple)}
+.stat-s{font-size:11px;color:var(--purple);font-weight:600;margin-top:2px}
+.stat-l{font-size:10px;color:var(--hint);margin-top:2px}
+
+.list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow);cursor:pointer}
+.card:active{opacity:.75}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.card-id{font-size:13px;font-weight:600;color:var(--purple)}
+.card-pack{font-size:13px;color:var(--muted);margin-top:2px}
+.card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;gap:4px}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.b-paid{background:var(--green-bg);color:var(--green)}
+.b-unpaid{background:var(--yellow-bg);color:var(--yellow)}
+.b-def{background:var(--bg2);color:var(--muted)}
+
+.card-client{font-size:15px;font-weight:600;margin-bottom:10px}
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.chip{background:var(--bg2);border-radius:10px;padding:8px 12px}
+.chip-l{font-size:10px;color:var(--hint);margin-bottom:3px}
+.chip-v{font-size:14px;font-weight:600}
+.chip-v.pos{color:var(--green)}
+.chip-v.neg{color:var(--red)}
+.card-note{font-size:12px;color:var(--muted);margin-top:6px}
+
+.empty{text-align:center;padding:64px 16px;color:var(--muted)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
+
+/* DETAIL */
+.dov{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
+.dov.open{display:block;animation:fin .2s ease}
+@keyframes fin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.dnav{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:4px;font-size:15px;font-weight:500}
+.d-title{font-size:17px;font-weight:600}
+.btn-sd{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;height:38px}
+.btn-sd:disabled{opacity:.6}
+.dbody{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+.dc{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.dch{padding:12px 16px 10px;font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;border-bottom:.5px solid var(--border)}
+.dgrid{display:grid;grid-template-columns:1fr 1fr}
+.df{padding:13px 16px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)}
+.df:nth-child(even){border-right:none}
+.df.full{grid-column:1/-1;border-right:none}
+.df-l{font-size:11px;color:var(--hint);margin-bottom:5px;font-weight:500}
+.di{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;padding:0}
+.di:focus{color:var(--purple)}
+.di[type=number]{-moz-appearance:textfield}
+.di[type=number]::-webkit-outer-spin-button,.di[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.ds{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center;padding-right:16px}
+.d-ro{font-size:15px;font-weight:500;color:var(--muted)}
+.d-num{font-size:17px;font-weight:700;color:var(--text)}
+.d-pos{color:var(--green)}
+.d-neg{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="lbar" id="lbar"></div>
+<div class="toast" id="toast"></div>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="hdr-title">貨物運費</div>
+      <div class="hdr-sub" id="hdrSub">載入中…</div>
+    </div>
+    <div class="top-r">
+      <a href="/" class="btn-icon">需求單 ›</a>
+      <a href="/pack.html" class="btn-icon">出貨單 ›</a>
+      <button class="btn-ref" onclick="loadAll()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="srch">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="srchInput" placeholder="搜尋編號、出貨單、委託人…" oninput="renderAll()">
+  </div>
+  <div class="filter-row" id="filterRow"></div>
+</div>
+
+<div class="stats" id="statsBar"></div>
+<div class="list" id="list"></div>
+
+<!-- DETAIL -->
+<div class="dov" id="detailOv">
+  <div class="dnav">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-back" onclick="closeDetail()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回
+      </button>
+      <span class="d-title" id="dTitle"></span>
+    </div>
+    <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
+  </div>
+  <div class="dbody" id="dbody"></div>
+</div>
+
+<script>
+const API = '/api/notion';
+let records = [], schema = {};
+let statusFilters = { company: '', client: '' };
+let viewingId = null;
+
+function lbar(p){ const b=document.getElementById('lbar'); b.style.width=p+'%'; if(p>=100)setTimeout(()=>b.style.width='0',400); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function fmt(n){ return n!=null ? '$'+Number(n).toLocaleString() : '—'; }
+
+async function loadSchema(){
+  try{ const res=await fetch(API+'?action=freight_schema'); schema=await res.json(); } catch(e){}
+}
+async function loadRecords(){
+  lbar(30);
+  try{
+    const res=await fetch(API+'?action=freight_list');
+    lbar(80);
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    records=data; lbar(100);
+    const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
+  } catch(e){ lbar(100); toast('⚠️ '+e.message); document.getElementById('hdrSub').textContent='載入失敗'; }
+}
+async function loadAll(){ await Promise.allSettled([loadSchema(),loadRecords()]); renderAll(); }
+
+function bc(s){ return {'已付款':'b-paid','未付款':'b-unpaid'}[s]||'b-def'; }
+function badge(s){ return s?`<span class="badge ${bc(s)}">${s}</span>`:''; }
+
+function baseFiltered(){
+  const q=document.getElementById('srchInput').value.toLowerCase();
+  return records.filter(r=>{
+    const matchQ=!q||(r.id+r.pack+r.clientCode+r.clientName).toLowerCase().includes(q);
+    const matchC=!statusFilters.company||r.companyStatus===statusFilters.company;
+    const matchCL=!statusFilters.client||r.clientStatus===statusFilters.client;
+    return matchQ&&matchC&&matchCL;
+  });
+}
+
+function renderStats(){
+  const data=baseFiltered();
+  const companyTotal=data.reduce((s,r)=>s+Number(r.companyAmount||0),0);
+  const clientTotal=data.reduce((s,r)=>s+Number(r.clientAmount||0),0);
+  const diffTotal=data.reduce((s,r)=>s+Number(r.diff||0),0);
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat"><div class="stat-n">${data.length}</div><div class="stat-l">總筆數</div></div>
+    <div class="stat"><div class="stat-n" style="font-size:14px">${fmt(companyTotal)}</div><div class="stat-l">公司運費</div><div class="stat-s">${fmt(clientTotal)} 客戶</div></div>
+    <div class="stat"><div class="stat-n ${diffTotal>=0?'':''}d-pos" style="font-size:14px;color:${diffTotal>=0?'var(--green)':'var(--red)'}">${fmt(diffTotal)}</div><div class="stat-l">差額合計</div></div>`;
+}
+
+function renderFilters(){
+  const coOpts=schema['公司狀態']?.options||[];
+  const clOpts=schema['客戶狀態']?.options||[];
+  const chips=[
+    ...coOpts.map(o=>({key:'company',val:o,label:`公司:${o}`})),
+    ...clOpts.map(o=>({key:'client', val:o,label:`客戶:${o}`})),
+  ];
+  document.getElementById('filterRow').innerHTML=chips.map(c=>`
+    <span class="fchip${statusFilters[c.key]===c.val?' on':''}" onclick="toggleFilter('${c.key}','${c.val}')">${c.label}</span>`).join('');
+}
+function toggleFilter(key,val){ statusFilters[key]=statusFilters[key]===val?'':val; renderAll(); }
+
+function renderList(){
+  const data=baseFiltered();
+  const el=document.getElementById('list');
+  if(!data.length){ el.innerHTML=`<div class="empty">📭<p>沒有符合的運費資料</p></div>`; return; }
+  el.innerHTML=data.map(r=>`
+    <div class="card" onclick="openDetail('${r._pageId}')">
+      <div class="card-top">
+        <div>
+          <div class="card-id">${r.id||'—'}</div>
+          <div class="card-pack">${r.pack||'—'}</div>
+        </div>
+        <div class="card-badges">
+          <span style="font-size:10px;color:var(--hint)">公司</span>${badge(r.companyStatus)}
+          <span style="font-size:10px;color:var(--hint)">客戶</span>${badge(r.clientStatus)}
+        </div>
+      </div>
+      <div class="card-client">${r.clientCode||''}${r.clientName?' '+r.clientName:''}</div>
+      <div class="card-grid">
+        <div class="chip"><div class="chip-l">PJ箱號</div><div class="chip-v">${r.pjBox||'—'}</div></div>
+        <div class="chip"><div class="chip-l">重量</div><div class="chip-v">${r.weight||0} KG</div></div>
+        <div class="chip"><div class="chip-l">公司運費</div><div class="chip-v">${fmt(r.companyAmount)}</div></div>
+        <div class="chip"><div class="chip-l">客戶運費</div><div class="chip-v">${fmt(r.clientAmount)}</div></div>
+        <div class="chip" style="grid-column:1/-1"><div class="chip-l">差額</div><div class="chip-v ${Number(r.diff||0)>=0?'pos':'neg'}">${fmt(r.diff)}</div></div>
+      </div>
+      ${r.note?`<div class="card-note">${r.note}</div>`:''}
+    </div>`).join('');
+}
+
+function renderAll(){ renderStats(); renderFilters(); renderList(); }
+
+function openDetail(pageId){
+  const r=records.find(x=>x._pageId===pageId);
+  if(!r){ toast('找不到資料'); return; }
+  viewingId=pageId;
+  document.getElementById('dTitle').textContent=r.id||'—';
+
+  const coOpts=schema['公司狀態']?.options||[];
+  const clOpts=schema['客戶狀態']?.options||[];
+  const msel=(opts,cur,id)=>`<select class="ds" id="${id}"><option value="">— 選擇 —</option>${opts.map(o=>`<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('')}</select>`;
+
+  document.getElementById('dbody').innerHTML=`
+    <div class="dc">
+      <div class="dch">基本資訊</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">出貨單</div><span class="d-ro">${r.pack||'—'}</span></div>
+        <div class="df"><div class="df-l">委託人</div><span class="d-ro">${r.clientCode||''}${r.clientName?' '+r.clientName:''}</span></div>
+        <div class="df"><div class="df-l">PJ箱號</div><span class="d-ro">${r.pjBox||'—'}</span></div>
+        <div class="df"><div class="df-l">重量 KG</div><span class="d-ro">${r.weight||0}</span></div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">費用</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">公司單價</div><input class="di" id="d_companyPrice" type="number" value="${r.companyPrice||0}"></div>
+        <div class="df"><div class="df-l">客戶單價</div><input class="di" id="d_clientPrice" type="number" value="${r.clientPrice||0}"></div>
+        <div class="df"><div class="df-l">公司金額</div><span class="d-num">${fmt(r.companyAmount)}</span></div>
+        <div class="df"><div class="df-l">客戶金額</div><span class="d-num">${fmt(r.clientAmount)}</span></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">差額</div><span class="d-num ${Number(r.diff||0)>=0?'d-pos':'d-neg'}" style="font-size:20px">${fmt(r.diff)}</span></div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">狀態</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">公司狀態</div>${msel(coOpts,r.companyStatus,'d_coStatus')}</div>
+        <div class="df" style="border-bottom:none"><div class="df-l">客戶狀態</div>${msel(clOpts,r.clientStatus,'d_clStatus')}</div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">其他</div>
+      <div class="dgrid">
+        <div class="df full"><div class="df-l">重量差</div><input class="di" id="d_weightDiff" value="${r.weightDiff||''}"></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">備註</div><textarea class="di" id="d_note" rows="3" style="resize:none;height:72px">${r.note||''}</textarea></div>
+      </div>
+    </div>`;
+  document.getElementById('detailOv').classList.add('open');
+}
+
+function closeDetail(){ document.getElementById('detailOv').classList.remove('open'); }
+
+async function saveDetail(){
+  const btn=document.getElementById('btnSave');
+  btn.disabled=true; btn.textContent='儲存中…';
+  const body={
+    companyPrice:  document.getElementById('d_companyPrice').value,
+    clientPrice:   document.getElementById('d_clientPrice').value,
+    companyStatus: document.getElementById('d_coStatus').value,
+    clientStatus:  document.getElementById('d_clStatus').value,
+    weightDiff:    document.getElementById('d_weightDiff').value,
+    note:          document.getElementById('d_note').value.trim(),
+  };
+  try{
+    const res=await fetch(`${API}?action=freight_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await res.json(); if(d.error) throw new Error(d.error);
+    toast('✅ 已儲存');
+    await loadRecords(); renderAll(); openDetail(viewingId);
+  } catch(e){ toast('❌ '+e.message); }
+  btn.disabled=false; btn.textContent='儲存';
+}
+
+loadAll();
+</script>
+</body>
+</html>

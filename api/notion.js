@@ -349,6 +349,184 @@ export default async function handler(req) {
       return json({ ok: true, id: packPage.id });
     }
 
+    // FREIGHT LIST
+    if (req.method === 'GET' && action === 'freight_list') {
+      let allResults = [];
+      let cursor = undefined;
+      while (true) {
+        const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+        if (cursor) body.start_cursor = cursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
+          method: 'POST', headers: notionHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) return json({ error: 'Freight DB error', detail: data }, 500);
+        allResults = allResults.concat(data.results);
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+
+      // Resolve 出貨單 relation to get pack ID and clients
+      const packPageIds = new Set();
+      for (const page of allResults) {
+        const rel = Object.values(page.properties).find(v => v.id === 'Dj%7Dq');
+        if (rel?.relation?.length) rel.relation.forEach(r => packPageIds.add(r.id));
+      }
+      const packInfo = {};
+      await Promise.all([...packPageIds].map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const props = page.properties || {};
+          const titleProp = Object.values(props).find(v => v.type === 'title');
+          // Get req relations from pack to find clients
+          const reqRel = Object.values(props).find(v => v.id === 'z%7D_K');
+          packInfo[id] = {
+            label: titleProp?.title?.[0]?.plain_text || '',
+            reqIds: reqRel?.relation?.map(r => r.id) || [],
+          };
+        } catch { packInfo[id] = { label: '', reqIds: [] }; }
+      }));
+
+      // Get unique clients from req pages
+      const allReqIds = new Set();
+      Object.values(packInfo).forEach(p => p.reqIds.forEach(id => allReqIds.add(id)));
+      const reqClients = {};
+      await Promise.all([...allReqIds].map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const clientProp = Object.values(page.properties || {}).find(v => v.id === 'A%3A%3Ei');
+          reqClients[id] = clientProp?.rich_text?.[0]?.plain_text || '';
+        } catch { reqClients[id] = ''; }
+      }));
+
+      return json(allResults.map(page => freightToRecord(page, packInfo, reqClients)));
+    }
+
+    // FREIGHT SCHEMA
+    if (req.method === 'GET' && action === 'freight_schema') {
+      const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}`, { headers: notionHeaders() });
+      const data = await res.json();
+      if (!data.properties) return json({ error: 'Schema error' }, 500);
+      const schema = {};
+      for (const prop of Object.values(data.properties)) {
+        if (prop.type === 'select') {
+          schema[prop.id] = { name: Object.keys(data.properties).find(k => data.properties[k].id === prop.id), options: prop.select.options.map(o => o.name) };
+        }
+      }
+      return json(schema);
+    }
+
+    // FREIGHT UPDATE
+    if (req.method === 'PATCH' && action === 'freight_update') {
+      const pageId = url.searchParams.get('id');
+      const body = await req.json();
+      const props = {};
+      if (body.custStatus !== undefined) props['NInZ'] = { select: body.custStatus ? { name: body.custStatus } : null };
+      if (body.compStatus !== undefined) props['EmmN'] = { select: body.compStatus ? { name: body.compStatus } : null };
+      if (body.compPrice !== undefined) props['%3DMBG'] = { number: Number(body.compPrice) || 0 };
+      if (body.custPrice !== undefined) props['OWfD'] = { number: Number(body.custPrice) || 0 };
+      if (body.weightDiff !== undefined) props['hVw%60'] = { rich_text: [{ text: { content: body.weightDiff || '' } }] };
+      if (body.note !== undefined) props['MfK%60'] = { rich_text: [{ text: { content: body.note || '' } }] };
+      const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: 'PATCH', headers: notionHeaders(), body: JSON.stringify({ properties: props }),
+      });
+      const data = await res.json();
+      if (data.object === 'error') return json({ error: data.message }, 500);
+      return json({ ok: true });
+    }
+
+    // FREIGHT LIST
+    if (req.method === 'GET' && action === 'freight_list') {
+      let allResults = [];
+      let cursor = undefined;
+      while (true) {
+        const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+        if (cursor) body.start_cursor = cursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
+          method: 'POST', headers: notionHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) return json({ error: 'Freight DB error', detail: data }, 500);
+        allResults = allResults.concat(data.results);
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+
+      // Resolve 委託人 relation (mar[) -> shipto DB -> 姓名
+      const clientPageIds = new Set();
+      for (const page of allResults) {
+        const clientProp = Object.values(page.properties).find(v => v.id === 'mar%5B');
+        if (clientProp?.relation?.length) clientProp.relation.forEach(r => clientPageIds.add(r.id));
+      }
+      const clientNames = {};
+      await Promise.all([...clientPageIds].map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const props = page.properties || {};
+          const titleProp = Object.values(props).find(v => v.type === 'title');
+          const code = titleProp?.title?.[0]?.plain_text || '';
+          const nameProp = Object.values(props).find(v => v.id === '~zOg');
+          const name = nameProp?.rich_text?.[0]?.plain_text || '';
+          clientNames[id] = { code, name };
+        } catch { clientNames[id] = { code: '', name: '' }; }
+      }));
+
+      // Resolve 出貨單 relation (Dj}q) -> pack title
+      const packPageIds = new Set();
+      for (const page of allResults) {
+        const packProp = Object.values(page.properties).find(v => v.id === 'Dj%7Dq');
+        if (packProp?.relation?.length) packProp.relation.forEach(r => packPageIds.add(r.id));
+      }
+      const packTitlesF = {};
+      await Promise.all([...packPageIds].map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const titleProp = Object.values(page.properties || {}).find(v => v.type === 'title');
+          packTitlesF[id] = titleProp?.title?.[0]?.plain_text || '';
+        } catch { packTitlesF[id] = ''; }
+      }));
+
+      return json(allResults.map(page => freightToRecord(page, clientNames, packTitlesF)));
+    }
+
+    // FREIGHT SCHEMA
+    if (req.method === 'GET' && action === 'freight_schema') {
+      const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}`, { headers: notionHeaders() });
+      const data = await res.json();
+      if (!data.properties) return json({ error: 'Schema error', detail: data }, 500);
+      const idToKey = { 'EmmN': '公司狀態', 'NInZ': '客戶狀態' };
+      const schema = {};
+      for (const prop of Object.values(data.properties)) {
+        const key = idToKey[prop.id];
+        if (!key) continue;
+        if (prop.type === 'select') schema[key] = { type: 'select', options: prop.select.options.map(o => o.name) };
+      }
+      return json(schema);
+    }
+
+    // FREIGHT UPDATE
+    if (req.method === 'PATCH' && action === 'freight_update') {
+      const pageId = url.searchParams.get('id');
+      const body = await req.json();
+      const props = {};
+      if (body.companyPrice !== undefined) props['%3DMBG'] = { number: Number(body.companyPrice) || 0 };
+      if (body.clientPrice  !== undefined) props['OWfD']   = { number: Number(body.clientPrice)  || 0 };
+      if (body.companyStatus) props['EmmN'] = { select: { name: body.companyStatus } };
+      if (body.clientStatus)  props['NInZ'] = { select: { name: body.clientStatus  } };
+      if (body.note !== undefined) props['MfK%60'] = { rich_text: [{ text: { content: body.note || '' } }] };
+      if (body.weightDiff !== undefined) props['hVw%60'] = { rich_text: [{ text: { content: String(body.weightDiff || '') } }] };
+      const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: 'PATCH', headers: notionHeaders(), body: JSON.stringify({ properties: props }),
+      });
+      const data = await res.json();
+      if (data.object === 'error') return json({ error: data.message }, 500);
+      return json({ ok: true });
+    }
+
     // FREIGHT DEBUG
     if (req.method === 'GET' && action === 'freight_debug') {
       const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
@@ -479,6 +657,107 @@ function recordToProperties(r) {
 }
 
 // ── PACK DB ──
+function freightToRecord(page, packInfo = {}, reqClients = {}) {
+  if (!page || !page.properties) return {};
+  const p = page.properties;
+  const g = (id) => {
+    const prop = Object.values(p).find(v => v.id === id || v.id === decodeURIComponent(id));
+    if (!prop) return '';
+    switch (prop.type) {
+      case 'title':     return prop.title?.[0]?.plain_text || '';
+      case 'rich_text': return prop.rich_text?.[0]?.plain_text || '';
+      case 'number':    return prop.number ?? 0;
+      case 'select':    return prop.select?.name || '';
+      case 'formula':   return prop.formula?.number ?? prop.formula?.string ?? '';
+      case 'rollup':    return prop.rollup?.number ?? prop.rollup?.array?.[0]?.rich_text?.[0]?.plain_text ?? '';
+      default: return '';
+    }
+  };
+  // 出貨單 relation
+  const packRel = Object.values(p).find(v => v.id === 'Dj%7Dq');
+  const packIds = packRel?.relation?.map(r => r.id) || [];
+  const packLabel = packIds.map(id => packInfo[id]?.label || '').filter(Boolean).join(', ');
+  // Clients from pack → req
+  const clientSet = new Set();
+  packIds.forEach(pid => {
+    (packInfo[pid]?.reqIds || []).forEach(rid => {
+      if (reqClients[rid]) clientSet.add(reqClients[rid]);
+    });
+  });
+  const clients = [...clientSet];
+  return {
+    _pageId: page.id,
+    id:        g('title'),
+    packLabel,
+    clients,
+    pjBox:     g('E%3BJR'),
+    weight:    g('%7CHtj'),
+    compStatus: g('EmmN'),
+    custStatus: g('NInZ'),
+    compPrice:  g('%3DMBG'),
+    custPrice:  g('OWfD'),
+    compTotal:  g('xmsH'),
+    custTotal:  g('ecPw'),
+    diff:       g('%3FZZO'),
+    weightDiff: g('hVw%60'),
+    note:       g('MfK%60'),
+  };
+}
+
+function freightToRecord(page, clientNames = {}, packTitles = {}) {
+  if (!page || !page.properties) return {};
+  const p = page.properties;
+  const g = (id) => {
+    const prop = Object.values(p).find(v => v.id === id || v.id === decodeURIComponent(id));
+    if (!prop) return null;
+    switch (prop.type) {
+      case 'title':     return prop.title?.[0]?.plain_text || '';
+      case 'rich_text': return prop.rich_text?.[0]?.plain_text || '';
+      case 'number':    return prop.number ?? 0;
+      case 'select':    return prop.select?.name || '';
+      case 'formula':
+        if (prop.formula?.type === 'number') return prop.formula.number ?? 0;
+        if (prop.formula?.type === 'string') return prop.formula.string || '';
+        return 0;
+      case 'rollup':
+        if (prop.rollup?.type === 'number') return prop.rollup.number ?? 0;
+        if (prop.rollup?.type === 'array') return prop.rollup.array?.[0]?.rich_text?.[0]?.plain_text || prop.rollup.array?.[0]?.number || '';
+        return '';
+      default: return '';
+    }
+  };
+
+  // 委託人 relation -> name
+  const clientProp = Object.values(p).find(v => v.id === 'mar%5B');
+  const clientIds = clientProp?.relation || [];
+  const clientCode = clientIds.map(r => clientNames[r.id]?.code || '').filter(Boolean).join(', ');
+  const clientName = clientIds.map(r => clientNames[r.id]?.name || '').filter(Boolean).join(', ');
+
+  // 出貨單 relation
+  const packProp = Object.values(p).find(v => v.id === 'Dj%7Dq');
+  const packIds = packProp?.relation || [];
+  const pack = packIds.map(r => packTitles[r.id] || '').filter(Boolean).join(', ');
+
+  return {
+    _pageId:       page.id,
+    id:            g('title'),
+    pack,
+    pjBox:         g('E%3BJR'),
+    weight:        g('%7CHtj'),
+    companyPrice:  g('%3DMBG'),
+    clientPrice:   g('OWfD'),
+    companyAmount: g('xmsH'),
+    clientAmount:  g('ecPw'),
+    diff:          g('%3FZZO'),
+    companyStatus: g('EmmN'),
+    clientStatus:  g('NInZ'),
+    note:          g('MfK%60'),
+    weightDiff:    g('hVw%60'),
+    clientCode,
+    clientName,
+  };
+}
+
 function packToRecord(page, reqInfo = {}) {
   if (!page || !page.properties) return {};
   const p = page.properties;
