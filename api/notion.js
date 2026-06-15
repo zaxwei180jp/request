@@ -454,19 +454,21 @@ export default async function handler(req) {
         cursor = data.next_cursor;
       }
 
-      // Resolve 委託人 relation (mar%5B) -> shipto DB -> 姓名
-      const clientPageIds = new Set();
-      for (const page of allResults) {
-        // Try both encoded and raw ID
-        const clientProp = Object.values(page.properties).find(v =>
-          v.id === 'mar%5B' || v.id === 'mar[' || decodeURIComponent(v.id) === 'mar['
-        );
-        if (clientProp?.relation?.length) clientProp.relation.forEach(r => clientPageIds.add(r.id));
+      // Helper: find prop by encoded or decoded ID
+      const findProp = (props, id) =>
+        Object.values(props).find(v => v.id === id || v.id === decodeURIComponent(id) || decodeURIComponent(v.id) === decodeURIComponent(id));
+
+      // Debug: show first record's prop IDs
+      if (url.searchParams.get('debug') === 'client') {
+        const p = allResults[0]?.properties || {};
+        return json(Object.fromEntries(Object.entries(p).map(([k,v])=>[k,{id:v.id,type:v.type,rel:v.relation||null}])));
       }
 
-      // Debug: if debug param, return clientPageIds
-      if (url.searchParams.get('debug') === 'client') {
-        return json({ clientPageIds: [...clientPageIds], total: allResults.length });
+      // Resolve 委託人 relation (mar[)
+      const clientPageIds = new Set();
+      for (const page of allResults) {
+        const clientProp = findProp(page.properties, 'mar%5B');
+        if (clientProp?.relation?.length) clientProp.relation.forEach(r => clientPageIds.add(r.id));
       }
 
       const clientNames = {};
@@ -489,7 +491,7 @@ export default async function handler(req) {
       // Resolve 出貨單 relation (Dj}q) -> pack title
       const packPageIds = new Set();
       for (const page of allResults) {
-        const packProp = Object.values(page.properties).find(v => v.id === 'Dj%7Dq');
+        const packProp = findProp(page.properties, 'Dj%7Dq');
         if (packProp?.relation?.length) packProp.relation.forEach(r => packPageIds.add(r.id));
       }
       const packTitlesF = {};
@@ -783,14 +785,17 @@ function freightToRecord(page, clientNames = {}, packTitles = {}) {
     }
   };
 
+  // Helper for this record
+  const fp = (id) => Object.values(p).find(v => v.id === id || v.id === decodeURIComponent(id) || decodeURIComponent(v.id) === decodeURIComponent(id));
+
   // 委託人 relation -> name
-  const clientProp = Object.values(p).find(v => v.id === 'mar%5B' || v.id === 'mar[');
+  const clientProp = fp('mar%5B');
   const clientIds = clientProp?.relation || [];
   const clientCode = clientIds.map(r => clientNames[r.id]?.code || '').filter(Boolean).join(', ');
   const clientName = clientIds.map(r => clientNames[r.id]?.name || '').filter(Boolean).join(', ');
 
   // 出貨單 relation
-  const packProp = Object.values(p).find(v => v.id === 'Dj%7Dq');
+  const packProp = fp('Dj%7Dq');
   const packIds = packProp?.relation || [];
   const pack = packIds.map(r => packTitles[r.id] || '').filter(Boolean).join(', ');
 
