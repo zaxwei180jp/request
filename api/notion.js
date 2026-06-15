@@ -457,7 +457,7 @@ export default async function handler(req) {
       // Resolve 委託人 relation (mar[) -> shipto DB -> 姓名
       const clientPageIds = new Set();
       for (const page of allResults) {
-        const clientProp = Object.values(page.properties).find(v => v.id === 'mar%5B');
+        const clientProp = Object.values(page.properties).find(v => v.id === 'mar%5B' || v.id === 'mar[');
         if (clientProp?.relation?.length) clientProp.relation.forEach(r => clientPageIds.add(r.id));
       }
       const clientNames = {};
@@ -525,6 +525,56 @@ export default async function handler(req) {
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message }, 500);
       return json({ ok: true });
+    }
+
+    // UNLINKED PACKS (出貨單還沒有關聯運費的)
+    if (req.method === 'GET' && action === 'unlinked_packs') {
+      let allPacks = [];
+      let cursor = undefined;
+      while (true) {
+        const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+        if (cursor) body.start_cursor = cursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${PACK_DB_ID}/query`, {
+          method: 'POST', headers: notionHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) break;
+        allPacks = allPacks.concat(data.results);
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+      // Get all pack IDs already linked in freight DB
+      let freightResults = [];
+      let fcursor = undefined;
+      while (true) {
+        const body = { page_size: 100 };
+        if (fcursor) body.start_cursor = fcursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
+          method: 'POST', headers: notionHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) break;
+        freightResults = freightResults.concat(data.results);
+        if (!data.has_more) break;
+        fcursor = data.next_cursor;
+      }
+      const linkedPackIds = new Set();
+      for (const page of freightResults) {
+        const packProp = Object.values(page.properties).find(v => v.id === 'Dj%7Dq');
+        if (packProp?.relation?.length) packProp.relation.forEach(r => linkedPackIds.add(r.id));
+      }
+      // Filter out already linked packs
+      const unlinked = allPacks.filter(p => !linkedPackIds.has(p.id)).map(page => {
+        const props = page.properties || {};
+        const titleProp = Object.values(props).find(v => v.type === 'title');
+        const boxProp = Object.values(props).find(v => v.id === 'llSb');
+        return {
+          id: page.id,
+          label: titleProp?.title?.[0]?.plain_text || '',
+          box: boxProp?.rich_text?.[0]?.plain_text || '',
+        };
+      }).filter(r => r.label);
+      return json(unlinked);
     }
 
     // FREIGHT CREATE
@@ -703,7 +753,7 @@ function freightToRecord(page, clientNames = {}, packTitles = {}) {
   };
 
   // 委託人 relation -> name
-  const clientProp = Object.values(p).find(v => v.id === 'mar%5B');
+  const clientProp = Object.values(p).find(v => v.id === 'mar%5B' || v.id === 'mar[');
   const clientIds = clientProp?.relation || [];
   const clientCode = clientIds.map(r => clientNames[r.id]?.code || '').filter(Boolean).join(', ');
   const clientName = clientIds.map(r => clientNames[r.id]?.name || '').filter(Boolean).join(', ');

@@ -293,11 +293,13 @@ async function openAdd(){
   document.getElementById('a_id').value=nextFreightId();
   ['a_companyPrice','a_clientPrice','a_weightDiff','a_note'].forEach(id=>document.getElementById(id).value='');
   fillSel('a_companyStatus','公司狀態');fillSel('a_clientStatus','客戶狀態');
-  if(!packListF.length){
-    try{const r=await fetch(API+'?action=pack_list');packListF=await r.json();}catch(e){packListF=[];}
-  }
+  // Always reload unlinked packs fresh
+  try{
+    const r=await fetch(API+'?action=unlinked_packs');
+    packListF=await r.json();
+  }catch(e){packListF=[];}
   const packSel=document.getElementById('a_pack');
-  packSel.innerHTML='<option value="">— 選擇出貨單 —</option>'+packListF.map(p=>`<option value="${p._pageId}">${p.id}${p.box?' ('+p.box+')':''}</option>`).join('');
+  packSel.innerHTML='<option value="">— 選擇出貨單 —</option>'+packListF.map(p=>`<option value="${p.id}">${p.label}${p.box?' ('+p.box+')':''}</option>`).join('');
   if(!shiptoListF.length){
     try{const r=await fetch(API+'?action=shipto_list');const d=await r.json();shiptoListF=Array.isArray(d)?d:[];}catch(e){shiptoListF=[];}
   }
