@@ -454,24 +454,36 @@ export default async function handler(req) {
         cursor = data.next_cursor;
       }
 
-      // Resolve 委託人 relation (mar[) -> shipto DB -> 姓名
+      // Resolve 委託人 relation (mar%5B) -> shipto DB -> 姓名
       const clientPageIds = new Set();
       for (const page of allResults) {
-        const clientProp = Object.values(page.properties).find(v => v.id === 'mar%5B' || v.id === 'mar[');
+        // Try both encoded and raw ID
+        const clientProp = Object.values(page.properties).find(v =>
+          v.id === 'mar%5B' || v.id === 'mar[' || decodeURIComponent(v.id) === 'mar['
+        );
         if (clientProp?.relation?.length) clientProp.relation.forEach(r => clientPageIds.add(r.id));
       }
+
+      // Debug: if debug param, return clientPageIds
+      if (url.searchParams.get('debug') === 'client') {
+        return json({ clientPageIds: [...clientPageIds], total: allResults.length });
+      }
+
       const clientNames = {};
       await Promise.all([...clientPageIds].map(async (id) => {
         try {
           const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
           const page = await res.json();
+          if (page.object === 'error') { clientNames[id] = { code: id.slice(0,8), name: '(無法讀取)' }; return; }
           const props = page.properties || {};
           const titleProp = Object.values(props).find(v => v.type === 'title');
           const code = titleProp?.title?.[0]?.plain_text || '';
-          const nameProp = Object.values(props).find(v => v.id === '~zOg');
+          // Try ~zOg first, then any rich_text
+          let nameProp = Object.values(props).find(v => v.id === '~zOg');
+          if (!nameProp) nameProp = Object.values(props).find(v => v.type === 'rich_text' && v.rich_text?.[0]?.plain_text);
           const name = nameProp?.rich_text?.[0]?.plain_text || '';
           clientNames[id] = { code, name };
-        } catch { clientNames[id] = { code: '', name: '' }; }
+        } catch(e) { clientNames[id] = { code: '', name: '' }; }
       }));
 
       // Resolve 出貨單 relation (Dj}q) -> pack title
