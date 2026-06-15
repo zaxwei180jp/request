@@ -3,194 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>出貨單管理</title>
+<title>出貨單</title>
 <style>
 :root{
-  --purple:#534AB7;--purple-light:#EEEDFE;
-  --bg:#F5F5F7;--bg-card:#fff;--bg2:#f0f0f5;
-  --text:#1a1a1a;--muted:#6e6e80;--hint:#a0a0b0;
-  --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.18);
-  --r:14px;--rs:8px;--shadow:0 1px 4px rgba(0,0,0,0.07);
+  --purple:#534AB7;--pl:#EEEDFE;
+  --bg:#F2F2F7;--card:#fff;--bg2:#E8E8ED;
+  --text:#1C1C1E;--muted:#6C6C70;--hint:#AEAEB2;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
+  --r:16px;--rs:10px;--shadow:0 2px 8px rgba(0,0,0,0.06);
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#111114;--bg-card:#1c1c22;--bg2:#26262e;
-  --text:#f0f0f5;--muted:#9090a8;--hint:#55556a;
-  --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.16);
-  --shadow:0 1px 4px rgba(0,0,0,0.4);
+  --bg:#000;--card:#1C1C1E;--bg2:#2C2C2E;
+  --text:#FFFFFF;--muted:#8E8E93;--hint:#48484A;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --shadow:0 2px 8px rgba(0,0,0,0.5);
 }}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
-
-.hdr{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:16px;position:sticky;top:0;z-index:50}
-.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.hdr-title{font-size:20px;font-weight:600}
-.hdr-sub{font-size:13px;color:var(--muted);margin-top:2px}
-.btn-ref{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center}
-.srch{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px}
-.srch svg{flex-shrink:0;opacity:.45}
-.srch input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
+.nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
+.nav-tab{flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;gap:6px}
+.nav-tab.active{color:var(--purple);border-bottom-color:var(--purple);font-weight:700}
+.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
+.hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hdr-left h1{font-size:22px;font-weight:700}
+.hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
+.hdr-btns{display:flex;gap:8px;align-items:center}
+.btn-icon{background:var(--bg2);border:none;border-radius:var(--rs);width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);height:40px;padding:0 16px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.srch{display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:var(--rs);padding:10px 14px}
+.srch svg{flex-shrink:0;opacity:.4}
+.srch input{border:none;background:transparent;flex:1;font-size:16px;color:var(--text);outline:none}
 .srch input::placeholder{color:var(--hint)}
-.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
-.filter-row::-webkit-scrollbar{display:none}
-.fchip{border:.5px solid var(--border2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--bg-card);color:var(--muted);flex-shrink:0}
-.fchip.on{background:var(--purple);border-color:var(--purple);color:#fff}
-
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px}
-.stat{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--rs);padding:10px;text-align:center}
-.stat-n{font-size:20px;font-weight:600;color:var(--purple)}
-.stat-l{font-size:10px;color:var(--hint);margin-top:2px}
-
-.list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
-.card{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow);cursor:pointer}
-.card:active{opacity:.75}
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
-.card-id{font-size:15px;font-weight:700;color:var(--purple)}
-.card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-.badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;gap:4px}
-.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 0;background:var(--card)}
+.chips::-webkit-scrollbar{display:none}
+.chip{border:.5px solid var(--border2);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--card);color:var(--muted);flex-shrink:0}
+.chip.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.chip-gap{height:10px;background:var(--card)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 16px}
+.stat{background:var(--card);border-radius:var(--rs);padding:12px 10px;text-align:center;box-shadow:var(--shadow)}
+.stat-n{font-size:22px;font-weight:700;color:var(--purple)}
+.stat-l{font-size:10px;color:var(--hint);margin-top:4px}
+.list{padding:0 16px 120px;display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer}
+.card:active{opacity:.8}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.card-id{font-size:16px;font-weight:700;color:var(--purple)}
+.card-clients{font-size:13px;color:var(--muted);margin-top:3px}
+.card-badges{display:flex;gap:6px}
+.badge{display:inline-flex;align-items:center;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;gap:4px}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;display:inline-block}
 .b-done{background:#E1F5EE;color:#0F6E56}
 .b-pend{background:#FAEEDA;color:#854F0B}
 .b-prog{background:#E6F1FB;color:#185FA5}
 .b-canc{background:#FCEBEB;color:#A32D2D}
-.card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-.chip{background:var(--bg2);border-radius:10px;padding:8px 12px}
-.chip-l{font-size:10px;color:var(--hint);margin-bottom:2px}
-.chip-v{font-size:14px;font-weight:600}
-.card-reqs{display:flex;flex-wrap:wrap;gap:4px}
-.req-tag{background:rgba(83,74,183,.1);color:var(--purple);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600}
-.req-more{color:var(--hint);font-size:11px;padding:3px 4px}
-.empty{text-align:center;padding:64px 16px;color:var(--muted)}
-
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.bricks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 10px}
+.brick{background:var(--bg2);border-radius:var(--rs);padding:10px 12px}
+.brick-l{font-size:10px;color:var(--hint);margin-bottom:4px;font-weight:500}
+.brick-v{font-size:15px;font-weight:600}
+.reqs{display:flex;flex-wrap:wrap;gap:6px}
+.req-tag{background:var(--pl);color:var(--purple);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700}
+.req-more{color:var(--hint);font-size:12px;padding:4px}
+.empty{text-align:center;padding:80px 16px;color:var(--muted)}
+.empty-ico{font-size:56px;margin-bottom:16px}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,.95);backdrop-filter:blur(10px);color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 .lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
-
-/* ADD FORM */
-.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:flex-end}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end}
 .ov.open{display:flex}
-.sheet{background:var(--bg-card);border-radius:20px 20px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .25s ease}
-@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
-.sh-handle{width:36px;height:4px;background:var(--border2);border-radius:4px;margin:12px auto 0}
-.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
-.sh-title{font-size:17px;font-weight:600}
-.btn-x{background:var(--bg2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted)}
-.fbody{padding:0 16px}
-.fld{margin-bottom:14px}
-.fld label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-.fld input,.fld select,.fld textarea{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:11px 13px;font-size:15px;background:var(--bg-card);color:var(--text);outline:none;-webkit-appearance:none}
-.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
-.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
-.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.factions{display:flex;gap:10px;margin-top:20px}
-.btn-cf{flex:1;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:13px;font-size:15px;cursor:pointer;color:var(--muted)}
-.btn-sv{flex:2;background:var(--purple);border:none;border-radius:var(--rs);padding:13px;font-size:15px;font-weight:600;cursor:pointer;color:#fff}
+.sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .3s ease}
+@keyframes up{from{transform:translateY(80px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sh-bar{width:40px;height:4px;background:var(--border2);border-radius:4px;margin:14px auto 0}
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 14px}
+.sh-title{font-size:18px;font-weight:700}
+.btn-x{background:var(--bg2);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}
+.fbody{padding:0 20px}
+.fld{margin-bottom:16px}
+.fld label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.fld input,.fld select,.fld textarea{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:13px 14px;font-size:16px;background:var(--card);color:var(--text);outline:none;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.factions{display:flex;gap:12px;margin-top:24px}
+.btn-cf{flex:1;background:var(--bg2);border:none;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:var(--muted);font-weight:500}
+.btn-sv{flex:2;background:var(--purple);border:none;border-radius:var(--rs);padding:15px;font-size:16px;font-weight:700;cursor:pointer;color:#fff}
 .btn-sv:disabled{opacity:.6}
-.slbl{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 12px;padding-bottom:8px;border-bottom:.5px solid var(--border)}
-.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:9px 16px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
-.req-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
-.req-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--rs);cursor:pointer;border:.5px solid transparent}
-.req-item.checked{border-color:var(--purple);background:var(--purple-light)}
-.req-item-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.req-item.checked .req-item-check{background:var(--purple);border-color:var(--purple);color:#fff;font-size:11px;font-weight:700}
-.req-item.checked .req-item-check::after{content:'✓'}
-.req-srch{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:9px 12px;font-size:14px;background:var(--bg-card);color:var(--text);outline:none;margin-bottom:8px}
-.req-srch:focus{border-color:var(--purple)}
-/* DETAIL */
+.sec{font-size:12px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 14px;padding-bottom:10px;border-bottom:.5px solid var(--border)}
+.req-list{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto}
+.req-srch{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:11px 14px;font-size:15px;background:var(--card);color:var(--text);outline:none;margin-bottom:10px}
+.req-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border-radius:var(--rs);cursor:pointer;border:1.5px solid transparent}
+.req-item.checked{border-color:var(--purple);background:var(--pl)}
+.req-ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.req-item.checked .req-ck{background:var(--purple);border-color:var(--purple);color:#fff}
 .dov{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
 .dov.open{display:block;animation:fin .2s ease}
-@keyframes fin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-.dnav{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
-.btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:4px;font-size:15px;font-weight:500}
-.d-title{font-size:17px;font-weight:600}
-.btn-sd{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer}
+@keyframes fin{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+.dnav{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:6px;font-size:16px;font-weight:600}
+.d-id{font-size:18px;font-weight:700}
+.btn-sd{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:10px 20px;font-size:15px;font-weight:700;cursor:pointer}
 .btn-sd:disabled{opacity:.6}
-.dbody{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:30px}
-.dc{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
-.dch{padding:12px 16px 10px;font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;border-bottom:.5px solid var(--border)}
+.dbody{padding:16px;display:flex;flex-direction:column;gap:14px;padding-bottom:40px}
+.dc{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.dch{padding:14px 16px 10px;font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;border-bottom:.5px solid var(--border)}
 .dgrid{display:grid;grid-template-columns:1fr 1fr}
 .df{padding:14px 16px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)}
 .df:nth-child(even){border-right:none}
 .df.full{grid-column:1/-1;border-right:none}
-.df-l{font-size:11px;color:var(--hint);margin-bottom:6px;font-weight:500}
-.di{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;padding:0}
+.df-l{font-size:11px;color:var(--hint);margin-bottom:6px;font-weight:600}
+.di{width:100%;border:none;background:transparent;font-size:16px;font-weight:600;color:var(--text);outline:none;padding:0;resize:none}
 .di:focus{color:var(--purple)}
 .di[type=number]{-moz-appearance:textfield}
 .di[type=number]::-webkit-outer-spin-button,.di[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
-.sbtn{border:none;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
-.sbtn::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.sbtn{border:none;border-radius:20px;padding:7px 16px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.sbtn::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.8;display:inline-block}
 .sbtn.b-done{background:#E1F5EE;color:#0F6E56}
 .sbtn.b-pend{background:#FAEEDA;color:#854F0B}
 .sbtn.b-prog{background:#E6F1FB;color:#185FA5}
 .sbtn.b-canc{background:#FCEBEB;color:#A32D2D}
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
-.reqs-wrap{padding:12px 16px;display:flex;flex-wrap:wrap;gap:6px}
-.nav-link{font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px}
-.nav-link:hover{color:var(--purple)}
+.d-ro{font-size:16px;font-weight:600;color:var(--muted)}
+.reqs-wrap{padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px}
 </style>
 </head>
 <body>
-
 <div class="lbar" id="lbar"></div>
 <div class="toast" id="toast"></div>
-
+<nav class="nav">
+  <a href="/" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    需求單
+  </a>
+  <span class="nav-tab active">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+    出貨單
+  </span>
+  <a href="/freight.html" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    運費
+  </a>
+</nav>
 <div class="hdr">
-  <div class="hdr-top">
-    <div>
-      <div class="hdr-title">出貨單</div>
-      <div class="hdr-sub" id="hdrSub">載入中…</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <a href="/freight.html" class="nav-link" style="font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px;padding:8px 10px;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs)">運費 ›</a>
-      <a href="/" class="nav-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>需求單
-      </a>
-      <button class="btn-ref" onclick="loadAll()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      </button>
-      <button class="btn-add" onclick="openAdd()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
-      </button>
+  <div class="hdr-row">
+    <div class="hdr-left"><h1>出貨單</h1><p id="hdrSub">載入中…</p></div>
+    <div class="hdr-btns">
+      <button class="btn-icon" onclick="loadAll()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+      <button class="btn-add" onclick="openAdd()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
     </div>
   </div>
   <div class="srch">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input type="text" id="srchInput" placeholder="搜尋包貨單、箱號、需求單號…" oninput="renderAll()">
   </div>
-  <div class="filter-row" id="filterRow"></div>
 </div>
-
+<div class="chips" id="chips"></div>
+<div class="chip-gap"></div>
 <div class="stats" id="statsBar"></div>
 <div class="list" id="list"></div>
 
-<!-- ADD FORM -->
+<!-- ADD -->
 <div class="ov" id="addOv">
   <div class="sheet">
-    <div class="sh-handle"></div>
-    <div class="sh-hdr">
-      <span class="sh-title">新增出貨單</span>
-      <button class="btn-x" onclick="closeAdd()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
+    <div class="sh-bar"></div>
+    <div class="sh-hdr"><span class="sh-title">新增出貨單</span><button class="btn-x" onclick="closeAdd()">✕</button></div>
     <div class="fbody">
-      <div class="slbl">基本資訊</div>
+      <div class="sec">基本資訊</div>
       <div class="fld"><label>包貨單編號</label><input id="a_id" placeholder="PACK026"></div>
       <div class="r2">
         <div class="fld"><label>PJ箱號</label><input id="a_box" placeholder="908"></div>
         <div class="fld"><label>重量 KG</label><input id="a_weight" type="number" placeholder="0"></div>
       </div>
       <div class="fld"><label>預計到貨日期</label><input id="a_arrive" type="date"></div>
-      <div class="slbl">狀態</div>
+      <div class="sec">狀態</div>
       <div class="r2">
         <div class="fld"><label>封箱狀態</label><select id="a_seal"><option value="">— 選擇 —</option></select></div>
         <div class="fld"><label>發貨狀態</label><select id="a_ship"><option value="">— 選擇 —</option></select></div>
       </div>
       <div class="fld"><label>備註</label><textarea id="a_note" rows="2" style="resize:none"></textarea></div>
-      <div class="slbl">關聯需求單 <span id="reqSelCount" style="color:var(--purple);font-weight:600"></span></div>
+      <div class="sec">關聯需求單 <span id="reqSelCount" style="color:var(--purple);font-weight:700"></span></div>
       <input class="req-srch" id="reqSrch" placeholder="搜尋需求單號或商品名稱…" oninput="renderReqList()">
-      <div class="req-list" id="reqList">
-        <div style="text-align:center;color:var(--hint);padding:16px">載入中…</div>
-      </div>
+      <div class="req-list" id="reqList"><div style="text-align:center;color:var(--hint);padding:20px">載入中…</div></div>
       <div class="factions">
         <button class="btn-cf" onclick="closeAdd()">取消</button>
         <button class="btn-sv" id="btnAdd" onclick="saveNew()">新增到 Notion</button>
@@ -202,145 +193,168 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- DETAIL -->
 <div class="dov" id="detailOv">
   <div class="dnav">
-    <div style="display:flex;align-items:center;gap:8px">
-      <button class="btn-back" onclick="closeDetail()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回
-      </button>
-      <span class="d-title" id="dTitle"></span>
-    </div>
+    <button class="btn-back" onclick="closeDetail()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+    <span class="d-id" id="dId"></span>
     <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
   </div>
   <div class="dbody" id="dbody"></div>
 </div>
 
 <script>
-const API = '/api/notion';
-let records = [], schema = {};
-let statusFilters = { seal: '', ship: '' };
-let viewingId = null;
+const API='/api/notion';
+let records=[],schema={};
+let statusFilters={seal:'',ship:''};
+let unlinkedReqs=[],selectedReqIds=new Set(),viewingId=null;
 
-function lbar(p){ const b=document.getElementById('lbar'); b.style.width=p+'%'; if(p>=100)setTimeout(()=>b.style.width='0',400); }
-function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function lbar(p){const b=document.getElementById('lbar');b.style.width=p+'%';if(p>=100)setTimeout(()=>b.style.width='0',400);}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
-async function loadSchema(){
-  try{
-    const res = await fetch(API+'?action=pack_schema');
-    schema = await res.json();
-  } catch(e){ console.error('schema',e); }
-}
-
+async function loadSchema(){try{const r=await fetch(API+'?action=pack_schema');schema=await r.json();}catch(e){}}
 async function loadRecords(){
   lbar(30);
   try{
-    const res = await fetch(API+'?action=pack_list');
-    lbar(80);
-    const data = await res.json();
-    if(data.error) throw new Error(data.error);
-    records = data;
-    lbar(100);
-    const now = new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById('hdrSub').textContent = `共 ${records.length} 筆 · ${now} 同步`;
-  } catch(e){
-    lbar(100); toast('⚠️ '+e.message);
-    document.getElementById('hdrSub').textContent='載入失敗';
-  }
+    const r=await fetch(API+'?action=pack_list');lbar(80);
+    const d=await r.json();if(d.error)throw new Error(d.error);
+    records=d;lbar(100);
+    const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
+  }catch(e){lbar(100);toast('⚠️ '+e.message);document.getElementById('hdrSub').textContent='載入失敗';}
 }
+async function loadAll(){await Promise.allSettled([loadSchema(),loadRecords()]);renderAll();}
 
-async function loadAll(){
-  await Promise.allSettled([loadSchema(), loadRecords()]);
-  renderAll();
-}
-
-function bc(s){
-  return {'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-pend';
-}
-function badge(s){ return s?`<span class="badge ${bc(s)}">${s}</span>`:''; }
+function bc(s){return{'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-pend';}
+function badge(s){return s?`<span class="badge ${bc(s)}">${s}</span>`:'';}
+function scls(s){return{'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-def';}
 
 function baseFiltered(){
-  const q = document.getElementById('srchInput').value.toLowerCase();
+  const q=document.getElementById('srchInput').value.toLowerCase();
   return records.filter(r=>{
-    const matchQ = !q || (r.id+r.box+(r.reqs||[]).join(' ')).toLowerCase().includes(q);
-    const matchSeal = !statusFilters.seal || r.seal === statusFilters.seal;
-    const matchShip = !statusFilters.ship || r.ship === statusFilters.ship;
-    return matchQ && matchSeal && matchShip;
+    const mQ=!q||(r.id+r.box+(r.reqs||[]).join(' ')).toLowerCase().includes(q);
+    const mS=!statusFilters.seal||r.seal===statusFilters.seal;
+    const mSh=!statusFilters.ship||r.ship===statusFilters.ship;
+    return mQ&&mS&&mSh;
   });
 }
 
+function renderChips(){
+  const sealOpts=schema['封箱狀態']?.options||[];
+  const shipOpts=schema['發貨狀態']?.options||[];
+  const all=[...sealOpts.map(o=>({k:'seal',v:o,l:`封箱:${o}`})),...shipOpts.map(o=>({k:'ship',v:o,l:`發貨:${o}`}))];
+  document.getElementById('chips').innerHTML=all.map(c=>`<span class="chip${statusFilters[c.k]===c.v?' on':''}" onclick="toggleChip('${c.k}','${c.v}')">${c.l}</span>`).join('');
+}
+function toggleChip(k,v){statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
+
 function renderStats(){
-  const data = baseFiltered();
-  const items=[
-    {num:data.length, label:'總筆數'},
-    {num:data.filter(r=>r.seal!=='完成').length, label:'封箱待處理'},
-    {num:data.filter(r=>r.ship==='進行中').length, label:'發貨進行中'},
-  ];
-  document.getElementById('statsBar').innerHTML = items.map(i=>`
-    <div class="stat"><div class="stat-n">${i.num}</div><div class="stat-l">${i.label}</div></div>`).join('');
-}
-
-function renderFilters(){
-  const sealOpts = schema['封箱狀態']?.options || [];
-  const shipOpts = schema['發貨狀態']?.options || [];
-  const chips = [
-    ...sealOpts.map(o=>({ key:'seal', val:o, label:`封箱:${o}` })),
-    ...shipOpts.map(o=>({ key:'ship', val:o, label:`發貨:${o}` })),
-  ];
-  document.getElementById('filterRow').innerHTML = chips.map(c=>`
-    <span class="fchip${statusFilters[c.key]===c.val?' on':''}" onclick="toggleFilter('${c.key}','${c.val}')">${c.label}</span>`).join('');
-}
-
-function toggleFilter(key, val){
-  statusFilters[key] = statusFilters[key]===val ? '' : val;
-  renderAll();
+  const data=baseFiltered();
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat"><div class="stat-n">${data.length}</div><div class="stat-l">總筆數</div></div>
+    <div class="stat"><div class="stat-n">${data.filter(r=>r.seal!=='完成').length}</div><div class="stat-l">封箱待處理</div></div>
+    <div class="stat"><div class="stat-n">${data.filter(r=>r.ship==='進行中').length}</div><div class="stat-l">發貨進行中</div></div>`;
 }
 
 function renderList(){
-  const data = baseFiltered();
-  const el = document.getElementById('list');
-  if(!data.length){ el.innerHTML=`<div class="empty">📭<p>沒有符合的出貨單</p></div>`; return; }
-  el.innerHTML = data.map(r=>`
+  const data=baseFiltered();
+  const el=document.getElementById('list');
+  if(!data.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>沒有符合的出貨單</p></div>`;return;}
+  el.innerHTML=data.map(r=>`
     <div class="card" onclick="openDetail('${r._pageId}')">
       <div class="card-top">
         <div>
-          <span class="card-id">${r.id||'—'}</span>
-          ${r.clients?.length ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${r.clients.join(' · ')}</div>` : ''}
+          <div class="card-id">${r.id||'—'}</div>
+          ${r.clients?.length?`<div class="card-clients">${r.clients.join(' · ')}</div>`:''}
         </div>
-        <div class="card-badges">
-          ${badge(r.seal)}${badge(r.ship)}
-        </div>
+        <div class="card-badges">${badge(r.seal)}${badge(r.ship)}</div>
       </div>
-      <div class="card-meta">
-        ${r.box?`<div class="chip"><div class="chip-l">PJ箱號</div><div class="chip-v">${r.box}</div></div>`:''}
-        ${r.weight?`<div class="chip"><div class="chip-l">重量</div><div class="chip-v">${r.weight} KG</div></div>`:''}
-        ${r.arrive?`<div class="chip"><div class="chip-l">預計到貨</div><div class="chip-v" style="font-size:12px">${r.arrive}</div></div>`:''}
-        ${r.reqCount?`<div class="chip"><div class="chip-l">需求單數</div><div class="chip-v">${r.reqCount} 筆</div></div>`:''}
+      <div class="bricks">
+        ${r.box?`<div class="brick"><div class="brick-l">PJ箱號</div><div class="brick-v">${r.box}</div></div>`:''}
+        ${r.weight!=null?`<div class="brick"><div class="brick-l">重量</div><div class="brick-v">${r.weight} KG</div></div>`:''}
+        ${r.arrive?`<div class="brick"><div class="brick-l">預計到貨</div><div class="brick-v" style="font-size:13px">${r.arrive}</div></div>`:''}
+        ${r.reqCount?`<div class="brick"><div class="brick-l">需求單數</div><div class="brick-v">${r.reqCount} 筆</div></div>`:''}
       </div>
-      ${r.reqs?.length?`<div class="card-reqs">
-        ${r.reqs.slice(0,6).map(re=>`<span class="req-tag">${re}</span>`).join('')}
-        ${r.reqs.length>6?`<span class="req-more">+${r.reqs.length-6}</span>`:''}
+      ${r.reqs?.length?`<div class="reqs">
+        ${r.reqs.slice(0,8).map(re=>`<span class="req-tag">${re}</span>`).join('')}
+        ${r.reqs.length>8?`<span class="req-more">+${r.reqs.length-8}</span>`:''}
       </div>`:''}
-      ${r.note?`<div style="font-size:12px;color:var(--muted);margin-top:8px">${r.note}</div>`:''}
+      ${r.note?`<div style="font-size:13px;color:var(--muted);margin-top:10px">${r.note}</div>`:''}
     </div>`).join('');
 }
+function renderAll(){renderChips();renderStats();renderList();}
 
-function renderAll(){ renderStats(); renderFilters(); renderList(); }
-
-function scls(s){ return {'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-def'; }
-
-function cycleStatus(elId, key){
-  const btn=document.getElementById(elId);
+function fillSel(id,key){
+  const el=document.getElementById(id);
   const opts=schema[key]?.options||[];
-  const cur=btn.dataset.val||'';
-  const idx=opts.indexOf(cur);
-  const next=opts[(idx+1)%opts.length]||opts[0]||'';
-  btn.dataset.val=next; btn.textContent=next;
-  btn.className='sbtn '+scls(next);
+  el.innerHTML='<option value="">— 選擇 —</option>'+opts.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+function nextPackId(){
+  const nums=records.map(r=>{const m=String(r.id).match(/^PACK(\d+)$/i);return m?parseInt(m[1]):0;}).filter(n=>n>0);
+  return 'PACK'+(nums.length?Math.max(...nums)+1:1);
+}
+async function openAdd(){
+  document.getElementById('a_id').value=nextPackId();
+  ['a_box','a_weight','a_arrive','a_note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('reqSrch').value='';
+  selectedReqIds.clear();
+  fillSel('a_seal','封箱狀態');fillSel('a_ship','發貨狀態');
+  document.getElementById('addOv').classList.add('open');
+  document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">載入中…</div>';
+  try{
+    const r=await fetch(API+'?action=unlinked_reqs');
+    unlinkedReqs=await r.json();
+    renderReqList();
+  }catch(e){document.getElementById('reqList').innerHTML='<div style="color:var(--muted);padding:16px">載入失敗</div>';}
+}
+function renderReqList(){
+  const q=document.getElementById('reqSrch').value.toLowerCase();
+  const data=unlinkedReqs.filter(r=>{
+    const mQ=!q||(r.label+r.name+r.client).toLowerCase().includes(q);
+    return mQ&&r.ship==='集貨中';
+  });
+  document.getElementById('reqSelCount').textContent=selectedReqIds.size?`已選 ${selectedReqIds.size} 筆`:'';
+  if(!data.length){document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">沒有集貨中的未關聯需求單</div>';return;}
+  document.getElementById('reqList').innerHTML=data.map(r=>`
+    <div class="req-item${selectedReqIds.has(r.id)?' checked':''}" onclick="toggleReq('${r.id}')">
+      <div class="req-ck">${selectedReqIds.has(r.id)?'✓':''}</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--purple)">${r.label}</div>
+        <div style="font-size:12px;color:var(--muted)">${r.client}${r.name?' · '+r.name.slice(0,24):''}</div>
+      </div>
+    </div>`).join('');
+}
+function toggleReq(id){if(selectedReqIds.has(id))selectedReqIds.delete(id);else selectedReqIds.add(id);renderReqList();}
+function closeAdd(){document.getElementById('addOv').classList.remove('open');}
+async function saveNew(){
+  const btn=document.getElementById('btnAdd');btn.disabled=true;btn.textContent='新增中…';
+  const body={
+    packId:document.getElementById('a_id').value.trim(),
+    box:document.getElementById('a_box').value.trim(),
+    weight:document.getElementById('a_weight').value||0,
+    arrive:document.getElementById('a_arrive').value,
+    seal:document.getElementById('a_seal').value,
+    ship:document.getElementById('a_ship').value,
+    note:document.getElementById('a_note').value.trim(),
+    reqPageIds:[...selectedReqIds],
+  };
+  if(!body.packId){toast('請填寫包貨單編號');btn.disabled=false;btn.textContent='新增到 Notion';return;}
+  try{
+    const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();if(d.error)throw new Error(d.error);
+    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadRecords();renderAll();
+  }catch(e){toast('❌ '+e.message);}
+  btn.disabled=false;btn.textContent='新增到 Notion';
 }
 
+function cycleStatus(id,key){
+  const btn=document.getElementById(id);
+  const opts=schema[key]?.options||[];
+  const cur=btn.dataset.val||'';
+  const next=opts[(opts.indexOf(cur)+1)%opts.length]||opts[0]||'';
+  btn.dataset.val=next;btn.textContent=next;btn.className='sbtn '+scls(next);
+}
 function openDetail(pageId){
   const r=records.find(x=>x._pageId===pageId);
-  if(!r){ toast('找不到資料'); return; }
+  if(!r){toast('找不到資料');return;}
   viewingId=pageId;
-  document.getElementById('dTitle').textContent=r.id||'—';
+  document.getElementById('dId').textContent=r.id||'—';
   document.getElementById('dbody').innerHTML=`
     <div class="dc">
       <div class="dch">基本資訊</div>
@@ -348,134 +362,41 @@ function openDetail(pageId){
         <div class="df"><div class="df-l">PJ箱號</div><input class="di" id="d_box" value="${r.box||''}"></div>
         <div class="df"><div class="df-l">重量 KG</div><input class="di" id="d_weight" type="number" value="${r.weight||0}"></div>
         <div class="df"><div class="df-l">預計到貨日期</div><input class="di" id="d_arrive" type="date" value="${r.arrive||''}"></div>
-        <div class="df"><div class="df-l">需求單數</div><span style="font-size:15px;font-weight:600">${r.reqCount||0} 筆</span></div>
+        <div class="df"><div class="df-l">需求單數</div><span style="font-size:16px;font-weight:600">${r.reqCount||0} 筆</span></div>
       </div>
     </div>
     <div class="dc">
       <div class="dch">狀態</div>
       <div class="dgrid">
         <div class="df"><div class="df-l">封箱狀態</div><button class="sbtn ${scls(r.seal)}" id="d_seal" data-val="${r.seal||''}" onclick="cycleStatus('d_seal','封箱狀態')">${r.seal||'—'}</button></div>
-        <div class="df"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'—'}</button></div>
+        <div class="df" style="border-bottom:none"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'—'}</button></div>
       </div>
     </div>
-    ${r.reqs?.length?`<div class="dc">
-      <div class="dch">需求單（${r.reqs.length} 筆）</div>
-      <div class="reqs-wrap">
-        ${r.reqs.map(re=>`<span class="req-tag">${re}</span>`).join('')}
-      </div>
-    </div>`:''}
+    ${r.reqs?.length?`<div class="dc"><div class="dch">需求單（${r.reqs.length} 筆）</div><div class="reqs-wrap">${r.reqs.map(re=>`<span class="req-tag">${re}</span>`).join('')}</div></div>`:''}
     <div class="dc">
       <div class="dch">備註</div>
-      <div class="dgrid">
-        <div class="df full" style="border-bottom:none"><textarea class="di" id="d_note" rows="3" style="resize:none;height:80px">${r.note||''}</textarea></div>
-      </div>
+      <div class="dgrid"><div class="df full" style="border-bottom:none"><textarea class="di" id="d_note" rows="3" style="height:80px">${r.note||''}</textarea></div></div>
     </div>`;
   document.getElementById('detailOv').classList.add('open');
 }
-
-function closeDetail(){ document.getElementById('detailOv').classList.remove('open'); }
-
+function closeDetail(){document.getElementById('detailOv').classList.remove('open');}
 async function saveDetail(){
-  const btn=document.getElementById('btnSave');
-  btn.disabled=true; btn.textContent='儲存中…';
+  const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
   const body={
-    box:    document.getElementById('d_box').value.trim(),
-    weight: document.getElementById('d_weight').value||0,
-    arrive: document.getElementById('d_arrive').value,
-    seal:   document.getElementById('d_seal').dataset.val||'',
-    ship:   document.getElementById('d_ship').dataset.val||'',
-    note:   document.getElementById('d_note').value.trim(),
+    box:document.getElementById('d_box').value.trim(),
+    weight:document.getElementById('d_weight').value||0,
+    arrive:document.getElementById('d_arrive').value,
+    seal:document.getElementById('d_seal').dataset.val||'',
+    ship:document.getElementById('d_ship').dataset.val||'',
+    note:document.getElementById('d_note').value.trim(),
   };
   try{
-    const res=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const d=await res.json(); if(d.error) throw new Error(d.error);
-    toast('✅ 已儲存');
-    await loadRecords(); renderAll(); openDetail(viewingId);
-  } catch(e){ toast('❌ '+e.message); }
-  btn.disabled=false; btn.textContent='儲存';
+    const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();if(d.error)throw new Error(d.error);
+    toast('✅ 已儲存');await loadRecords();renderAll();openDetail(viewingId);
+  }catch(e){toast('❌ '+e.message);}
+  btn.disabled=false;btn.textContent='儲存';
 }
-
-let unlinkedReqs = [], selectedReqIds = new Set();
-
-function fillSelect(id, key){
-  const el=document.getElementById(id);
-  const opts=schema[key]?.options||[];
-  el.innerHTML='<option value="">— 選擇 —</option>'+opts.map(o=>`<option value="${o}">${o}</option>`).join('');
-}
-
-async function openAdd(){
-  // Auto-fill next pack ID
-  const nums = records.map(r=>{ const m=String(r.id).match(/^PACK(\d+)$/i); return m?parseInt(m[1]):0; }).filter(n=>n>0);
-  const nextId = 'PACK' + String(nums.length ? Math.max(...nums)+1 : 1).padStart(3,'0');
-  document.getElementById('a_id').value = nextId;
-  document.getElementById('a_box').value='';
-  document.getElementById('a_weight').value='';
-  document.getElementById('a_arrive').value='';
-  document.getElementById('a_note').value='';
-  document.getElementById('reqSrch').value='';
-  selectedReqIds.clear();
-  fillSelect('a_seal','封箱狀態');
-  fillSelect('a_ship','發貨狀態');
-  document.getElementById('addOv').classList.add('open');
-  // Load unlinked reqs
-  document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:16px">載入中…</div>';
-  try{
-    const res = await fetch(API+'?action=unlinked_reqs');
-    unlinkedReqs = await res.json();
-    renderReqList();
-  } catch(e){ document.getElementById('reqList').innerHTML='<div style="color:var(--muted);padding:16px">載入失敗</div>'; }
-}
-
-function renderReqList(){
-  const q = document.getElementById('reqSrch').value.toLowerCase();
-  const data = unlinkedReqs.filter(r=>{
-    const matchQ = !q||(r.label+r.name+r.client).toLowerCase().includes(q);
-    return matchQ && r.ship === '集貨中';
-  });
-  document.getElementById('reqSelCount').textContent = selectedReqIds.size ? `已選 ${selectedReqIds.size} 筆` : '';
-  if(!data.length){ document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:16px">沒有未關聯的需求單</div>'; return; }
-  document.getElementById('reqList').innerHTML = data.map(r=>`
-    <div class="req-item${selectedReqIds.has(r.id)?' checked':''}" onclick="toggleReq('${r.id}')">
-      <div class="req-item-check"></div>
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--purple)">${r.label}</div>
-        <div style="font-size:12px;color:var(--muted)">${r.client}${r.name?' · '+r.name.slice(0,20):''}</div>
-      </div>
-    </div>`).join('');
-}
-
-function toggleReq(id){
-  if(selectedReqIds.has(id)) selectedReqIds.delete(id);
-  else selectedReqIds.add(id);
-  renderReqList();
-}
-
-function closeAdd(){ document.getElementById('addOv').classList.remove('open'); }
-
-async function saveNew(){
-  const btn=document.getElementById('btnAdd');
-  btn.disabled=true; btn.textContent='新增中…';
-  const body={
-    packId:  document.getElementById('a_id').value.trim(),
-    box:     document.getElementById('a_box').value.trim(),
-    weight:  document.getElementById('a_weight').value||0,
-    arrive:  document.getElementById('a_arrive').value,
-    seal:    document.getElementById('a_seal').value,
-    ship:    document.getElementById('a_ship').value,
-    note:    document.getElementById('a_note').value.trim(),
-    reqPageIds: [...selectedReqIds],
-  };
-  if(!body.packId){ toast('請填寫包貨單編號'); btn.disabled=false; btn.textContent='新增到 Notion'; return; }
-  try{
-    const res=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const d=await res.json(); if(d.error) throw new Error(d.error);
-    toast(`✅ ${body.packId} 已新增`);
-    closeAdd();
-    await loadRecords(); renderAll();
-  } catch(e){ toast('❌ '+e.message); }
-  btn.disabled=false; btn.textContent='新增到 Notion';
-}
-
 loadAll();
 </script>
 </body>
