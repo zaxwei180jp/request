@@ -427,7 +427,10 @@ async function openAdd(){
 
 function renderReqList(){
   const q = document.getElementById('reqSrch').value.toLowerCase();
-  const data = unlinkedReqs.filter(r=>!q||(r.label+r.name+r.client).toLowerCase().includes(q));
+  const data = unlinkedReqs.filter(r=>{
+    const matchQ = !q||(r.label+r.name+r.client).toLowerCase().includes(q);
+    return matchQ && r.ship === '集貨中';
+  });
   document.getElementById('reqSelCount').textContent = selectedReqIds.size ? `已選 ${selectedReqIds.size} 筆` : '';
   if(!data.length){ document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:16px">沒有未關聯的需求單</div>'; return; }
   document.getElementById('reqList').innerHTML = data.map(r=>`
