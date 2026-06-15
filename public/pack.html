@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>出貨單管理</title>
+<style>
+:root{
+  --purple:#534AB7;--purple-light:#EEEDFE;
+  --bg:#F5F5F7;--bg-card:#fff;--bg2:#f0f0f5;
+  --text:#1a1a1a;--muted:#6e6e80;--hint:#a0a0b0;
+  --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.18);
+  --r:14px;--rs:8px;--shadow:0 1px 4px rgba(0,0,0,0.07);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111114;--bg-card:#1c1c22;--bg2:#26262e;
+  --text:#f0f0f5;--muted:#9090a8;--hint:#55556a;
+  --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.16);
+  --shadow:0 1px 4px rgba(0,0,0,0.4);
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
+
+.hdr{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:16px;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hdr-title{font-size:20px;font-weight:600}
+.hdr-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.btn-ref{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center}
+.srch{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:var(--rs);padding:9px 12px;margin-bottom:10px}
+.srch svg{flex-shrink:0;opacity:.45}
+.srch input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
+.srch input::placeholder{color:var(--hint)}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filter-row::-webkit-scrollbar{display:none}
+.fchip{border:.5px solid var(--border2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--bg-card);color:var(--muted);flex-shrink:0}
+.fchip.on{background:var(--purple);border-color:var(--purple);color:#fff}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px}
+.stat{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--rs);padding:10px;text-align:center}
+.stat-n{font-size:20px;font-weight:600;color:var(--purple)}
+.stat-l{font-size:10px;color:var(--hint);margin-top:2px}
+
+.list{padding:0 14px 100px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow);cursor:pointer}
+.card:active{opacity:.75}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.card-id{font-size:15px;font-weight:700;color:var(--purple)}
+.card-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;gap:4px}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.b-done{background:#E1F5EE;color:#0F6E56}
+.b-pend{background:#FAEEDA;color:#854F0B}
+.b-prog{background:#E6F1FB;color:#185FA5}
+.b-canc{background:#FCEBEB;color:#A32D2D}
+.card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.chip{background:var(--bg2);border-radius:10px;padding:8px 12px}
+.chip-l{font-size:10px;color:var(--hint);margin-bottom:2px}
+.chip-v{font-size:14px;font-weight:600}
+.card-reqs{display:flex;flex-wrap:wrap;gap:4px}
+.req-tag{background:rgba(83,74,183,.1);color:var(--purple);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600}
+.req-more{color:var(--hint);font-size:11px;padding:3px 4px}
+.empty{text-align:center;padding:64px 16px;color:var(--muted)}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
+
+/* DETAIL */
+.dov{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
+.dov.open{display:block;animation:fin .2s ease}
+@keyframes fin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.dnav{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:4px;font-size:15px;font-weight:500}
+.d-title{font-size:17px;font-weight:600}
+.btn-sd{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer}
+.btn-sd:disabled{opacity:.6}
+.dbody{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:30px}
+.dc{background:var(--bg-card);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.dch{padding:12px 16px 10px;font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;border-bottom:.5px solid var(--border)}
+.dgrid{display:grid;grid-template-columns:1fr 1fr}
+.df{padding:14px 16px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)}
+.df:nth-child(even){border-right:none}
+.df.full{grid-column:1/-1;border-right:none}
+.df-l{font-size:11px;color:var(--hint);margin-bottom:6px;font-weight:500}
+.di{width:100%;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;padding:0}
+.di:focus{color:var(--purple)}
+.di[type=number]{-moz-appearance:textfield}
+.di[type=number]::-webkit-outer-spin-button,.di[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.sbtn{border:none;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.sbtn::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block}
+.sbtn.b-done{background:#E1F5EE;color:#0F6E56}
+.sbtn.b-pend{background:#FAEEDA;color:#854F0B}
+.sbtn.b-prog{background:#E6F1FB;color:#185FA5}
+.sbtn.b-canc{background:#FCEBEB;color:#A32D2D}
+.sbtn.b-def{background:var(--bg2);color:var(--muted)}
+.reqs-wrap{padding:12px 16px;display:flex;flex-wrap:wrap;gap:6px}
+.nav-link{font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px}
+.nav-link:hover{color:var(--purple)}
+</style>
+</head>
+<body>
+
+<div class="lbar" id="lbar"></div>
+<div class="toast" id="toast"></div>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="hdr-title">出貨單</div>
+      <div class="hdr-sub" id="hdrSub">載入中…</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a href="/" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>需求單
+      </a>
+      <button class="btn-ref" onclick="loadAll()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="srch">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="srchInput" placeholder="搜尋包貨單、箱號、需求單號…" oninput="renderAll()">
+  </div>
+  <div class="filter-row" id="filterRow"></div>
+</div>
+
+<div class="stats" id="statsBar"></div>
+<div class="list" id="list"></div>
+
+<!-- DETAIL -->
+<div class="dov" id="detailOv">
+  <div class="dnav">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-back" onclick="closeDetail()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回
+      </button>
+      <span class="d-title" id="dTitle"></span>
+    </div>
+    <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
+  </div>
+  <div class="dbody" id="dbody"></div>
+</div>
+
+<script>
+const API = '/api/notion';
+let records = [], schema = {};
+let statusFilters = { seal: '', ship: '' };
+let viewingId = null;
+
+function lbar(p){ const b=document.getElementById('lbar'); b.style.width=p+'%'; if(p>=100)setTimeout(()=>b.style.width='0',400); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+async function loadSchema(){
+  try{
+    const res = await fetch(API+'?action=pack_schema');
+    schema = await res.json();
+  } catch(e){ console.error('schema',e); }
+}
+
+async function loadRecords(){
+  lbar(30);
+  try{
+    const res = await fetch(API+'?action=pack_list');
+    lbar(80);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    records = data;
+    lbar(100);
+    const now = new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('hdrSub').textContent = `共 ${records.length} 筆 · ${now} 同步`;
+  } catch(e){
+    lbar(100); toast('⚠️ '+e.message);
+    document.getElementById('hdrSub').textContent='載入失敗';
+  }
+}
+
+async function loadAll(){
+  await Promise.allSettled([loadSchema(), loadRecords()]);
+  renderAll();
+}
+
+function bc(s){
+  return {'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-pend';
+}
+function badge(s){ return s?`<span class="badge ${bc(s)}">${s}</span>`:''; }
+
+function baseFiltered(){
+  const q = document.getElementById('srchInput').value.toLowerCase();
+  return records.filter(r=>{
+    const matchQ = !q || (r.id+r.box+(r.reqs||[]).join(' ')).toLowerCase().includes(q);
+    const matchSeal = !statusFilters.seal || r.seal === statusFilters.seal;
+    const matchShip = !statusFilters.ship || r.ship === statusFilters.ship;
+    return matchQ && matchSeal && matchShip;
+  });
+}
+
+function renderStats(){
+  const data = baseFiltered();
+  const items=[
+    {num:data.length, label:'總筆數'},
+    {num:data.filter(r=>r.seal!=='完成').length, label:'封箱待處理'},
+    {num:data.filter(r=>r.ship==='進行中').length, label:'發貨進行中'},
+  ];
+  document.getElementById('statsBar').innerHTML = items.map(i=>`
+    <div class="stat"><div class="stat-n">${i.num}</div><div class="stat-l">${i.label}</div></div>`).join('');
+}
+
+function renderFilters(){
+  const sealOpts = schema['封箱狀態']?.options || [];
+  const shipOpts = schema['發貨狀態']?.options || [];
+  const chips = [
+    ...sealOpts.map(o=>({ key:'seal', val:o, label:`封箱:${o}` })),
+    ...shipOpts.map(o=>({ key:'ship', val:o, label:`發貨:${o}` })),
+  ];
+  document.getElementById('filterRow').innerHTML = chips.map(c=>`
+    <span class="fchip${statusFilters[c.key]===c.val?' on':''}" onclick="toggleFilter('${c.key}','${c.val}')">${c.label}</span>`).join('');
+}
+
+function toggleFilter(key, val){
+  statusFilters[key] = statusFilters[key]===val ? '' : val;
+  renderAll();
+}
+
+function renderList(){
+  const data = baseFiltered();
+  const el = document.getElementById('list');
+  if(!data.length){ el.innerHTML=`<div class="empty">📭<p>沒有符合的出貨單</p></div>`; return; }
+  el.innerHTML = data.map(r=>`
+    <div class="card" onclick="openDetail('${r._pageId}')">
+      <div class="card-top">
+        <span class="card-id">${r.id||'—'}</span>
+        <div class="card-badges">
+          ${badge(r.seal)}${badge(r.ship)}
+        </div>
+      </div>
+      <div class="card-meta">
+        ${r.box?`<div class="chip"><div class="chip-l">PJ箱號</div><div class="chip-v">${r.box}</div></div>`:''}
+        ${r.weight?`<div class="chip"><div class="chip-l">重量</div><div class="chip-v">${r.weight} KG</div></div>`:''}
+        ${r.arrive?`<div class="chip"><div class="chip-l">預計到貨</div><div class="chip-v" style="font-size:12px">${r.arrive}</div></div>`:''}
+        ${r.reqCount?`<div class="chip"><div class="chip-l">需求單數</div><div class="chip-v">${r.reqCount} 筆</div></div>`:''}
+      </div>
+      ${r.reqs?.length?`<div class="card-reqs">
+        ${r.reqs.slice(0,6).map(re=>`<span class="req-tag">${re}</span>`).join('')}
+        ${r.reqs.length>6?`<span class="req-more">+${r.reqs.length-6}</span>`:''}
+      </div>`:''}
+      ${r.note?`<div style="font-size:12px;color:var(--muted);margin-top:8px">${r.note}</div>`:''}
+    </div>`).join('');
+}
+
+function renderAll(){ renderStats(); renderFilters(); renderList(); }
+
+function scls(s){ return {'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-def'; }
+
+function cycleStatus(elId, key){
+  const btn=document.getElementById(elId);
+  const opts=schema[key]?.options||[];
+  const cur=btn.dataset.val||'';
+  const idx=opts.indexOf(cur);
+  const next=opts[(idx+1)%opts.length]||opts[0]||'';
+  btn.dataset.val=next; btn.textContent=next;
+  btn.className='sbtn '+scls(next);
+}
+
+function openDetail(pageId){
+  const r=records.find(x=>x._pageId===pageId);
+  if(!r){ toast('找不到資料'); return; }
+  viewingId=pageId;
+  document.getElementById('dTitle').textContent=r.id||'—';
+  document.getElementById('dbody').innerHTML=`
+    <div class="dc">
+      <div class="dch">基本資訊</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">PJ箱號</div><input class="di" id="d_box" value="${r.box||''}"></div>
+        <div class="df"><div class="df-l">重量 KG</div><input class="di" id="d_weight" type="number" value="${r.weight||0}"></div>
+        <div class="df"><div class="df-l">預計到貨日期</div><input class="di" id="d_arrive" type="date" value="${r.arrive||''}"></div>
+        <div class="df"><div class="df-l">需求單數</div><span style="font-size:15px;font-weight:600">${r.reqCount||0} 筆</span></div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">狀態</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">封箱狀態</div><button class="sbtn ${scls(r.seal)}" id="d_seal" data-val="${r.seal||''}" onclick="cycleStatus('d_seal','封箱狀態')">${r.seal||'—'}</button></div>
+        <div class="df"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'—'}</button></div>
+      </div>
+    </div>
+    ${r.reqs?.length?`<div class="dc">
+      <div class="dch">需求單（${r.reqs.length} 筆）</div>
+      <div class="reqs-wrap">
+        ${r.reqs.map(re=>`<span class="req-tag">${re}</span>`).join('')}
+      </div>
+    </div>`:''}
+    <div class="dc">
+      <div class="dch">備註</div>
+      <div class="dgrid">
+        <div class="df full" style="border-bottom:none"><textarea class="di" id="d_note" rows="3" style="resize:none;height:80px">${r.note||''}</textarea></div>
+      </div>
+    </div>`;
+  document.getElementById('detailOv').classList.add('open');
+}
+
+function closeDetail(){ document.getElementById('detailOv').classList.remove('open'); }
+
+async function saveDetail(){
+  const btn=document.getElementById('btnSave');
+  btn.disabled=true; btn.textContent='儲存中…';
+  const body={
+    box:    document.getElementById('d_box').value.trim(),
+    weight: document.getElementById('d_weight').value||0,
+    arrive: document.getElementById('d_arrive').value,
+    seal:   document.getElementById('d_seal').dataset.val||'',
+    ship:   document.getElementById('d_ship').dataset.val||'',
+    note:   document.getElementById('d_note').value.trim(),
+  };
+  try{
+    const res=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await res.json(); if(d.error) throw new Error(d.error);
+    toast('✅ 已儲存');
+    await loadRecords(); renderAll(); openDetail(viewingId);
+  } catch(e){ toast('❌ '+e.message); }
+  btn.disabled=false; btn.textContent='儲存';
+}
+
+loadAll();
+</script>
+</body>
+</html>

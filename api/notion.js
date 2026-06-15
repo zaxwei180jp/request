@@ -201,19 +201,86 @@ export default async function handler(req) {
       return json({ ok: true });
     }
 
+    // PACK LIST
+    if (req.method === 'GET' && action === 'pack_list') {
+      let allResults = [];
+      let cursor = undefined;
+      while (true) {
+        const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+        if (cursor) body.start_cursor = cursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${PACK_DB_ID}/query`, {
+          method: 'POST', headers: notionHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) return json({ error: 'Pack DB error', detail: data }, 500);
+        allResults = allResults.concat(data.results);
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+
+      // Resolve 需求單 relation IDs to RE numbers
+      const reqPageIds = new Set();
+      for (const page of allResults) {
+        const rel = Object.values(page.properties).find(v => v.id === 'z%7D_K');
+        if (rel?.relation?.length) rel.relation.forEach(r => reqPageIds.add(r.id));
+      }
+      const reqTitles = {};
+      await Promise.all([...reqPageIds].map(async (id) => {
+        try {
+          const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
+          const page = await res.json();
+          const titleProp = Object.values(page.properties || {}).find(v => v.type === 'title');
+          reqTitles[id] = titleProp?.title?.[0]?.plain_text || '';
+        } catch { reqTitles[id] = ''; }
+      }));
+
+      return json(allResults.map(page => packToRecord(page, reqTitles)));
+    }
+
+    // PACK SCHEMA
+    if (req.method === 'GET' && action === 'pack_schema') {
+      const res = await fetch(`https://api.notion.com/v1/databases/${PACK_DB_ID}`, { headers: notionHeaders() });
+      const data = await res.json();
+      if (!data.properties) return json({ error: 'Schema error', detail: data }, 500);
+      const idToKey = { 'm%7CyI': '封箱狀態', 'yQKS': '發貨狀態' };
+      const schema = {};
+      for (const prop of Object.values(data.properties)) {
+        const key = idToKey[prop.id];
+        if (!key) continue;
+        if (prop.type === 'status') schema[key] = { type: 'status', options: prop.status.options.map(o => o.name) };
+      }
+      return json(schema);
+    }
+
+    // PACK UPDATE
+    if (req.method === 'PATCH' && action === 'pack_update') {
+      const pageId = url.searchParams.get('id');
+      const body = await req.json();
+      const props = {};
+      if (body.box)     props['llSb']     = { rich_text: [{ text: { content: body.box || '' } }] };
+      if (body.weight !== undefined) props['uStz'] = { number: Number(body.weight) || 0 };
+      if (body.seal)    props['m|yI']     = { status: { name: body.seal } };
+      if (body.ship)    props['yQKS']     = { status: { name: body.ship } };
+      if (body.arrive)  props['[~Wz']    = { date: { start: body.arrive } };
+      if (body.note !== undefined) props['FuLG'] = { rich_text: [{ text: { content: body.note || '' } }] };
+      const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: 'PATCH', headers: notionHeaders(), body: JSON.stringify({ properties: props }),
+      });
+      const data = await res.json();
+      if (data.object === 'error') return json({ error: data.message }, 500);
+      return json({ ok: true });
+    }
+
     // PACK DEBUG
     if (req.method === 'GET' && action === 'pack_debug') {
       const res = await fetch(`https://api.notion.com/v1/databases/${PACK_DB_ID}/query`, {
-        method: 'POST', headers: notionHeaders(),
-        body: JSON.stringify({ page_size: 1 }),
+        method: 'POST', headers: notionHeaders(), body: JSON.stringify({ page_size: 1 }),
       });
       const data = await res.json();
       if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
       const props = data.results[0].properties;
       const info = {};
-      for (const [k, v] of Object.entries(props)) {
-        info[k] = { id: v.id, type: v.type };
-      }
+      for (const [k, v] of Object.entries(props)) info[k] = { id: v.id, type: v.type };
       return json(info);
     }
 
@@ -321,3 +388,34 @@ function recordToProperties(r) {
 }
 
 // ── PACK DB ──
+function packToRecord(page, reqTitles = {}) {
+  if (!page || !page.properties) return {};
+  const p = page.properties;
+  const g = (id) => {
+    const prop = Object.values(p).find(v => v.id === id || v.id === decodeURIComponent(id));
+    if (!prop) return '';
+    switch (prop.type) {
+      case 'title':     return prop.title?.[0]?.plain_text || '';
+      case 'rich_text': return prop.rich_text?.[0]?.plain_text || '';
+      case 'number':    return prop.number ?? 0;
+      case 'status':    return prop.status?.name || '';
+      case 'date':      return prop.date?.start || '';
+      default: return '';
+    }
+  };
+  const relProp = Object.values(p).find(v => v.id === 'z%7D_K');
+  const relIds = relProp?.relation || [];
+  const reqs = relIds.map(r => reqTitles[r.id] || '').filter(Boolean);
+  return {
+    _pageId: page.id,
+    id:      g('title'),
+    box:     g('llSb'),
+    weight:  g('uStz'),
+    seal:    g('m%7CyI'),
+    ship:    g('yQKS'),
+    arrive:  g('%5B~Wz'),
+    note:    g('FuLG'),
+    reqs,
+    reqCount: relIds.length,
+  };
+}
