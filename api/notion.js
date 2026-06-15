@@ -218,23 +218,28 @@ export default async function handler(req) {
         cursor = data.next_cursor;
       }
 
-      // Resolve 需求單 relation IDs to RE numbers
+      // Resolve 需求單 relation IDs to RE numbers + client names
       const reqPageIds = new Set();
       for (const page of allResults) {
         const rel = Object.values(page.properties).find(v => v.id === 'z%7D_K');
         if (rel?.relation?.length) rel.relation.forEach(r => reqPageIds.add(r.id));
       }
-      const reqTitles = {};
+      const reqInfo = {}; // id -> { label, client }
       await Promise.all([...reqPageIds].map(async (id) => {
         try {
           const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: notionHeaders() });
           const page = await res.json();
-          const titleProp = Object.values(page.properties || {}).find(v => v.type === 'title');
-          reqTitles[id] = titleProp?.title?.[0]?.plain_text || '';
-        } catch { reqTitles[id] = ''; }
+          const props = page.properties || {};
+          const titleProp = Object.values(props).find(v => v.type === 'title');
+          const clientProp = Object.values(props).find(v => v.id === 'A%3A%3Ei');
+          reqInfo[id] = {
+            label: titleProp?.title?.[0]?.plain_text || '',
+            client: clientProp?.rich_text?.[0]?.plain_text || '',
+          };
+        } catch { reqInfo[id] = { label: '', client: '' }; }
       }));
 
-      return json(allResults.map(page => packToRecord(page, reqTitles)));
+      return json(allResults.map(page => packToRecord(page, reqInfo)));
     }
 
     // PACK SCHEMA
@@ -269,6 +274,76 @@ export default async function handler(req) {
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message }, 500);
       return json({ ok: true });
+    }
+
+    // 未關聯出貨單的需求單列表
+    if (req.method === 'GET' && action === 'unlinked_reqs') {
+      let allResults = [];
+      let cursor = undefined;
+      while (true) {
+        const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+        if (cursor) body.start_cursor = cursor;
+        const res = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+          method: 'POST', headers: notionHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) return json({ error: 'error', detail: data }, 500);
+        allResults = allResults.concat(data.results);
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+      // Filter: 出貨單 relation is empty
+      const unlinked = allResults.filter(page => {
+        const packProp = Object.values(page.properties).find(v => v.id === 'R_%3D%3A');
+        return !packProp?.relation?.length;
+      }).map(page => {
+        const p = page.properties;
+        const titleProp = Object.values(p).find(v => v.type === 'title');
+        const nameProp = Object.values(p).find(v => v.id === 'Tcrm');
+        const clientProp = Object.values(p).find(v => v.id === 'A%3A%3Ei');
+        return {
+          id: page.id,
+          label: titleProp?.title?.[0]?.plain_text || page.id.slice(0,8),
+          name: nameProp?.rich_text?.[0]?.plain_text || '',
+          client: clientProp?.rich_text?.[0]?.plain_text || '',
+        };
+      });
+      return json(unlinked);
+    }
+
+    // PACK CREATE
+    if (req.method === 'POST' && action === 'pack_create') {
+      const body = await req.json();
+      // 1. Create pack page
+      const packProps = {};
+      if (body.packId) packProps['title'] = { title: [{ text: { content: body.packId } }] };
+      if (body.box)    packProps['llSb']  = { rich_text: [{ text: { content: body.box || '' } }] };
+      if (body.weight) packProps['uStz']  = { number: Number(body.weight) || 0 };
+      if (body.seal)   packProps['m|yI']  = { status: { name: body.seal } };
+      if (body.ship)   packProps['yQKS']  = { status: { name: body.ship } };
+      if (body.arrive) packProps['[~Wz']  = { date: { start: body.arrive } };
+      if (body.note)   packProps['FuLG']  = { rich_text: [{ text: { content: body.note || '' } }] };
+      // Link selected req pages
+      if (body.reqPageIds?.length) {
+        packProps['z}_K'] = { relation: body.reqPageIds.map(id => ({ id })) };
+      }
+      const packRes = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST', headers: notionHeaders(),
+        body: JSON.stringify({ parent: { database_id: PACK_DB_ID }, properties: packProps }),
+      });
+      const packPage = await packRes.json();
+      if (packPage.object === 'error') return json({ error: packPage.message }, 500);
+
+      // 2. Write back pack relation to each linked req
+      if (body.reqPageIds?.length) {
+        await Promise.all(body.reqPageIds.map(async reqId => {
+          await fetch(`https://api.notion.com/v1/pages/${reqId}`, {
+            method: 'PATCH', headers: notionHeaders(),
+            body: JSON.stringify({ properties: { 'R_%3D%3A': { relation: [{ id: packPage.id }] } } }),
+          });
+        }));
+      }
+      return json({ ok: true, id: packPage.id });
     }
 
     // PACK DEBUG
@@ -388,7 +463,7 @@ function recordToProperties(r) {
 }
 
 // ── PACK DB ──
-function packToRecord(page, reqTitles = {}) {
+function packToRecord(page, reqInfo = {}) {
   if (!page || !page.properties) return {};
   const p = page.properties;
   const g = (id) => {
@@ -405,7 +480,11 @@ function packToRecord(page, reqTitles = {}) {
   };
   const relProp = Object.values(p).find(v => v.id === 'z%7D_K');
   const relIds = relProp?.relation || [];
-  const reqs = relIds.map(r => reqTitles[r.id] || '').filter(Boolean);
+  const reqs = relIds.map(r => reqInfo[r.id]?.label || '').filter(Boolean);
+  // Unique clients (deduplicated)
+  const clientSet = new Set();
+  relIds.forEach(r => { if (reqInfo[r.id]?.client) clientSet.add(reqInfo[r.id].client); });
+  const clients = [...clientSet];
   return {
     _pageId: page.id,
     id:      g('title'),
@@ -416,6 +495,7 @@ function packToRecord(page, reqTitles = {}) {
     arrive:  g('%5B~Wz'),
     note:    g('FuLG'),
     reqs,
+    clients,
     reqCount: relIds.length,
   };
 }
