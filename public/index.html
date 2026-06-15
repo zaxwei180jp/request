@@ -22,13 +22,15 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
 
 /* HEADER */
-.hdr{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:16px;position:sticky;top:0;z-index:50}
+.hdr{background:var(--bg-card);border-bottom:.5px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:50}
 .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hdr-title{font-size:20px;font-weight:600}
-.hdr-sub{font-size:13px;color:var(--muted);margin-top:2px}
-.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:9px 16px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px}
-.btn-ref{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center}
-.top-r{display:flex;gap:8px;align-items:center}
+.hdr-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;height:40px}
+.btn-ref{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:0 10px;cursor:pointer;color:var(--muted);display:flex;align-items:center;height:40px}
+.btn-icon{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:0 12px;cursor:pointer;color:var(--text);display:flex;align-items:center;height:40px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn-icon.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.top-r{display:flex;gap:6px;align-items:center}
 .srch{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:var(--rs);padding:9px 12px}
 .srch svg{flex-shrink:0;opacity:.45}
 .srch input{border:none;background:transparent;flex:1;font-size:15px;color:var(--text);outline:none}
@@ -155,8 +157,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .15s}
 .card.selected .card-check{background:var(--purple);border-color:var(--purple)}
 .card.selected .card-check::after{content:'✓';color:#fff;font-size:12px;font-weight:700}
-.btn-select{background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text)}
-.btn-select.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.btn-select{display:none}
 .ddel{display:flex;padding:0 14px 30px}
 .btn-del{flex:1;background:#FCEBEB;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:13px;font-size:15px;cursor:pointer;color:#A32D2D;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px}
 </style>
@@ -173,17 +174,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hdr-sub" id="hdrSub">載入中…</div>
     </div>
     <div class="top-r">
-      <a href="/pack.html" style="font-size:13px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:4px;padding:8px 10px;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs)">出貨單
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </a>
-      <button class="btn-ref" onclick="loadAll()">
+      <a href="/pack.html" class="btn-icon">出貨單 ›</a>
+      <button class="btn-ref" onclick="loadAll()" aria-label="重新整理">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
-      <button class="btn-select" id="btnSelect" onclick="toggleSelectMode()">選取</button>
-      <button class="btn-select" id="btnSelAll" style="display:none" onclick="selectAll()">全選</button>
-      <button class="btn-select" id="btnSelNone" style="display:none" onclick="clearSelect()">取消</button>
+      <button class="btn-icon" id="btnSelect" onclick="toggleSelectMode()">選取</button>
       <button class="btn-add" onclick="openAdd()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
       </button>
     </div>
   </div>
@@ -590,8 +587,6 @@ function toggleSelectMode(){
   const btn = document.getElementById('btnSelect');
   btn.classList.toggle('on', selectMode);
   btn.textContent = selectMode ? '退出' : '選取';
-  document.getElementById('btnSelAll').style.display  = selectMode ? '' : 'none';
-  document.getElementById('btnSelNone').style.display = selectMode ? '' : 'none';
   updateBatchBar();
   renderList();
 }
