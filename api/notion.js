@@ -5,6 +5,7 @@ const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const NOTION_VERSION = '2022-06-28';
 const SHIPTO_DB_ID = '2fd5bfd83387803fbb46e3dca0ea739b';
 const PACK_DB_ID = '2fe5bfd83387801ebc35f492744f41e1';
+const FREIGHT_DB_ID = '3035bfd833878045bfedea25f1f5bab6';
 
 const notionHeaders = () => ({
   'Authorization': `Bearer ${NOTION_TOKEN}`,
@@ -346,6 +347,19 @@ export default async function handler(req) {
         }));
       }
       return json({ ok: true, id: packPage.id });
+    }
+
+    // FREIGHT DEBUG
+    if (req.method === 'GET' && action === 'freight_debug') {
+      const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
+        method: 'POST', headers: notionHeaders(), body: JSON.stringify({ page_size: 1 }),
+      });
+      const data = await res.json();
+      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
+      const props = data.results[0].properties;
+      const info = {};
+      for (const [k, v] of Object.entries(props)) info[k] = { id: v.id, type: v.type };
+      return json(info);
     }
 
     // PACK DEBUG
