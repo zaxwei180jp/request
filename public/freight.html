@@ -242,12 +242,11 @@ function toggleChip(k,v){statusFilters[k]=statusFilters[k]===v?'':v;renderAll();
 
 function renderStats(){
   const data=baseFiltered();
-  const cTotal=data.reduce((s,r)=>s+Number(r.companyAmount||0),0);
-  const kTotal=data.reduce((s,r)=>s+Number(r.clientAmount||0),0);
+  const unpaidTotal=data.filter(r=>r.companyStatus==='未付款').reduce((s,r)=>s+Number(r.companyAmount||0),0);
   const dTotal=data.reduce((s,r)=>s+Number(r.diff||0),0);
   document.getElementById('statsBar').innerHTML=`
     <div class="stat"><div class="stat-n">${data.length}</div><div class="stat-l">總筆數</div></div>
-    <div class="stat"><div class="stat-n" style="font-size:14px">${fmt(cTotal)}</div><div class="stat-s">${fmt(kTotal)} 客戶</div><div class="stat-l">運費</div></div>
+    <div class="stat"><div class="stat-n" style="font-size:16px">${fmt(unpaidTotal)}</div><div class="stat-l">公司未付款</div></div>
     <div class="stat"><div class="stat-n" style="font-size:16px;color:${dTotal>=0?'var(--green)':'var(--red)'}">${fmt(dTotal)}</div><div class="stat-l">差額合計</div></div>`;
 }
 
