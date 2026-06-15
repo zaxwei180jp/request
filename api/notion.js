@@ -527,6 +527,28 @@ export default async function handler(req) {
       return json({ ok: true });
     }
 
+    // FREIGHT CREATE
+    if (req.method === 'POST' && action === 'freight_create') {
+      const body = await req.json();
+      const props = {};
+      if (body.freightId)      props['title']      = { title: [{ text: { content: body.freightId } }] };
+      if (body.packPageId)     props['Dj}q']       = { relation: [{ id: body.packPageId }] };
+      if (body.clientPageId)   props['mar[']       = { relation: [{ id: body.clientPageId }] };
+      if (body.companyPrice !== undefined) props['%3DMBG'] = { number: Number(body.companyPrice) || 0 };
+      if (body.clientPrice  !== undefined) props['OWfD']   = { number: Number(body.clientPrice)  || 0 };
+      if (body.companyStatus)  props['EmmN']       = { select: { name: body.companyStatus } };
+      if (body.clientStatus)   props['NInZ']       = { select: { name: body.clientStatus  } };
+      if (body.note)           props['MfK%60']     = { rich_text: [{ text: { content: body.note || '' } }] };
+      if (body.weightDiff)     props['hVw%60']     = { rich_text: [{ text: { content: body.weightDiff || '' } }] };
+      const res = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST', headers: notionHeaders(),
+        body: JSON.stringify({ parent: { database_id: FREIGHT_DB_ID }, properties: props }),
+      });
+      const data = await res.json();
+      if (data.object === 'error') return json({ error: data.message, detail: data }, 500);
+      return json({ ok: true, id: data.id });
+    }
+
     // FREIGHT DEBUG
     if (req.method === 'GET' && action === 'freight_debug') {
       const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {

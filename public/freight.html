@@ -74,6 +74,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast.show{opacity:1}
 .lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
 
+/* ADD FORM */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;align-items:flex-end}
+.ov.open{display:flex}
+.sheet{background:var(--bg-card);border-radius:20px 20px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .25s ease}
+@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sh-handle{width:36px;height:4px;background:var(--border2);border-radius:4px;margin:12px auto 0}
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px}
+.sh-title{font-size:17px;font-weight:600}
+.btn-x{background:var(--bg2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.fbody{padding:0 16px}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.fld input,.fld select,.fld textarea{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:11px 13px;font-size:15px;background:var(--bg-card);color:var(--text);outline:none;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.factions{display:flex;gap:10px;margin-top:20px}
+.btn-cf{flex:1;background:var(--bg2);border:.5px solid var(--border2);border-radius:var(--rs);padding:13px;font-size:15px;cursor:pointer;color:var(--muted)}
+.btn-sv{flex:2;background:var(--purple);border:none;border-radius:var(--rs);padding:13px;font-size:15px;font-weight:600;cursor:pointer;color:#fff}
+.btn-sv:disabled{opacity:.6}
+.slbl{font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 12px;padding-bottom:8px;border-bottom:.5px solid var(--border)}
+.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:0 14px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;height:40px}
 /* DETAIL */
 .dov{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
 .dov.open{display:block;animation:fin .2s ease}
@@ -118,6 +140,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="btn-ref" onclick="loadAll()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
+      <button class="btn-add" onclick="openAdd()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增
+      </button>
     </div>
   </div>
   <div class="srch">
@@ -129,6 +154,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="stats" id="statsBar"></div>
 <div class="list" id="list"></div>
+
+<!-- ADD FORM -->
+<div class="ov" id="addOv">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-hdr">
+      <span class="sh-title">新增貨物運費</span>
+      <button class="btn-x" onclick="closeAdd()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fbody">
+      <div class="slbl">基本資訊</div>
+      <div class="fld"><label>編號</label><input id="a_id" placeholder="M031"></div>
+      <div class="fld"><label>出貨單</label><select id="a_pack"><option value="">— 選擇 —</option></select></div>
+      <div class="fld"><label>委託人</label><select id="a_client"><option value="">— 選擇 —</option></select></div>
+      <div class="slbl">費用</div>
+      <div class="r2">
+        <div class="fld"><label>公司單價</label><input id="a_companyPrice" type="number" placeholder="180"></div>
+        <div class="fld"><label>客戶單價</label><input id="a_clientPrice" type="number" placeholder="200"></div>
+      </div>
+      <div class="slbl">狀態</div>
+      <div class="r2">
+        <div class="fld"><label>公司狀態</label><select id="a_companyStatus"><option value="">— 選擇 —</option></select></div>
+        <div class="fld"><label>客戶狀態</label><select id="a_clientStatus"><option value="">— 選擇 —</option></select></div>
+      </div>
+      <div class="slbl">其他</div>
+      <div class="fld"><label>重量差</label><input id="a_weightDiff" placeholder="選填"></div>
+      <div class="fld"><label>備註</label><textarea id="a_note" rows="2" style="resize:none"></textarea></div>
+      <div class="factions">
+        <button class="btn-cf" onclick="closeAdd()">取消</button>
+        <button class="btn-sv" id="btnAdd" onclick="saveNew()">新增到 Notion</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- DETAIL -->
 <div class="dov" id="detailOv">
@@ -304,6 +365,87 @@ async function saveDetail(){
     await loadRecords(); renderAll(); openDetail(viewingId);
   } catch(e){ toast('❌ '+e.message); }
   btn.disabled=false; btn.textContent='儲存';
+}
+
+let packList = [], shiptoListF = [];
+
+async function loadPackList(){
+  try{
+    const res = await fetch(API+'?action=pack_list');
+    const data = await res.json();
+    packList = Array.isArray(data) ? data : [];
+  } catch(e){ packList = []; }
+}
+
+async function loadShiptoListF(){
+  try{
+    const res = await fetch(API+'?action=shipto_list');
+    const data = await res.json();
+    shiptoListF = Array.isArray(data) ? data : [];
+  } catch(e){ shiptoListF = []; }
+}
+
+function nextFreightId(){
+  const nums = records.map(r=>{ const m=String(r.id).match(/^M0*(\d+)$/i); return m?parseInt(m[1]):0; }).filter(n=>n>0);
+  const next = nums.length ? Math.max(...nums)+1 : 1;
+  return 'M' + String(next).padStart(3,'0');
+}
+
+function fillSel(id, key){
+  const el=document.getElementById(id);
+  const opts=schema[key]?.options||[];
+  el.innerHTML='<option value="">— 選擇 —</option>'+opts.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+
+async function openAdd(){
+  document.getElementById('a_id').value = nextFreightId();
+  document.getElementById('a_companyPrice').value = '';
+  document.getElementById('a_clientPrice').value = '';
+  document.getElementById('a_weightDiff').value = '';
+  document.getElementById('a_note').value = '';
+  fillSel('a_companyStatus','公司狀態');
+  fillSel('a_clientStatus','客戶狀態');
+
+  // Load pack list
+  if(!packList.length) await loadPackList();
+  const packSel = document.getElementById('a_pack');
+  packSel.innerHTML = '<option value="">— 選擇出貨單 —</option>' +
+    packList.map(p=>`<option value="${p._pageId}">${p.id}${p.box?' ('+p.box+')':''}</option>`).join('');
+
+  // Load shipto list
+  if(!shiptoListF.length) await loadShiptoListF();
+  const clientSel = document.getElementById('a_client');
+  clientSel.innerHTML = '<option value="">— 選擇委託人 —</option>' +
+    shiptoListF.map(s=>`<option value="${s.id}">${s.code} ${s.name}</option>`).join('');
+
+  document.getElementById('addOv').classList.add('open');
+}
+
+function closeAdd(){ document.getElementById('addOv').classList.remove('open'); }
+
+async function saveNew(){
+  const btn = document.getElementById('btnAdd');
+  btn.disabled=true; btn.textContent='新增中…';
+  const body = {
+    freightId:     document.getElementById('a_id').value.trim(),
+    packPageId:    document.getElementById('a_pack').value,
+    clientPageId:  document.getElementById('a_client').value,
+    companyPrice:  document.getElementById('a_companyPrice').value||0,
+    clientPrice:   document.getElementById('a_clientPrice').value||0,
+    companyStatus: document.getElementById('a_companyStatus').value,
+    clientStatus:  document.getElementById('a_clientStatus').value,
+    weightDiff:    document.getElementById('a_weightDiff').value.trim(),
+    note:          document.getElementById('a_note').value.trim(),
+  };
+  if(!body.freightId){ toast('請填寫編號'); btn.disabled=false; btn.textContent='新增到 Notion'; return; }
+  try{
+    const res = await fetch(API+'?action=freight_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await res.json(); if(d.error) throw new Error(d.error);
+    toast(`✅ ${body.freightId} 已新增`);
+    closeAdd();
+    await loadRecords(); renderAll();
+  } catch(e){ toast('❌ '+e.message); }
+  btn.disabled=false; btn.textContent='新增到 Notion';
 }
 
 loadAll();
