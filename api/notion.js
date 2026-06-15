@@ -599,6 +599,25 @@ export default async function handler(req) {
       return json({ ok: true, id: data.id });
     }
 
+    // FREIGHT RECORD DEBUG
+    if (req.method === 'GET' && action === 'freight_record_debug') {
+      const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
+        method: 'POST', headers: notionHeaders(), body: JSON.stringify({ page_size: 1 }),
+      });
+      const data = await res.json();
+      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
+      const props = data.results[0].properties;
+      const info = {};
+      for (const [k, v] of Object.entries(props)) {
+        info[k] = {
+          id: v.id,
+          type: v.type,
+          val: v.type === 'relation' ? v.relation : null
+        };
+      }
+      return json(info);
+    }
+
     // FREIGHT DEBUG
     if (req.method === 'GET' && action === 'freight_debug') {
       const res = await fetch(`https://api.notion.com/v1/databases/${FREIGHT_DB_ID}/query`, {
