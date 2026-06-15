@@ -657,53 +657,6 @@ function recordToProperties(r) {
 }
 
 // ── PACK DB ──
-function freightToRecord(page, packInfo = {}, reqClients = {}) {
-  if (!page || !page.properties) return {};
-  const p = page.properties;
-  const g = (id) => {
-    const prop = Object.values(p).find(v => v.id === id || v.id === decodeURIComponent(id));
-    if (!prop) return '';
-    switch (prop.type) {
-      case 'title':     return prop.title?.[0]?.plain_text || '';
-      case 'rich_text': return prop.rich_text?.[0]?.plain_text || '';
-      case 'number':    return prop.number ?? 0;
-      case 'select':    return prop.select?.name || '';
-      case 'formula':   return prop.formula?.number ?? prop.formula?.string ?? '';
-      case 'rollup':    return prop.rollup?.number ?? prop.rollup?.array?.[0]?.rich_text?.[0]?.plain_text ?? '';
-      default: return '';
-    }
-  };
-  // 出貨單 relation
-  const packRel = Object.values(p).find(v => v.id === 'Dj%7Dq');
-  const packIds = packRel?.relation?.map(r => r.id) || [];
-  const packLabel = packIds.map(id => packInfo[id]?.label || '').filter(Boolean).join(', ');
-  // Clients from pack → req
-  const clientSet = new Set();
-  packIds.forEach(pid => {
-    (packInfo[pid]?.reqIds || []).forEach(rid => {
-      if (reqClients[rid]) clientSet.add(reqClients[rid]);
-    });
-  });
-  const clients = [...clientSet];
-  return {
-    _pageId: page.id,
-    id:        g('title'),
-    packLabel,
-    clients,
-    pjBox:     g('E%3BJR'),
-    weight:    g('%7CHtj'),
-    compStatus: g('EmmN'),
-    custStatus: g('NInZ'),
-    compPrice:  g('%3DMBG'),
-    custPrice:  g('OWfD'),
-    compTotal:  g('xmsH'),
-    custTotal:  g('ecPw'),
-    diff:       g('%3FZZO'),
-    weightDiff: g('hVw%60'),
-    note:       g('MfK%60'),
-  };
-}
-
 function freightToRecord(page, clientNames = {}, packTitles = {}) {
   if (!page || !page.properties) return {};
   const p = page.properties;
