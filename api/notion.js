@@ -301,11 +301,13 @@ export default async function handler(req) {
         const titleProp = Object.values(p).find(v => v.type === 'title');
         const nameProp = Object.values(p).find(v => v.id === 'Tcrm');
         const clientProp = Object.values(p).find(v => v.id === 'A%3A%3Ei');
+        const shipProp = Object.values(p).find(v => v.id === 'ko~P');
         return {
           id: page.id,
           label: titleProp?.title?.[0]?.plain_text || page.id.slice(0,8),
           name: nameProp?.rich_text?.[0]?.plain_text || '',
           client: clientProp?.rich_text?.[0]?.plain_text || '',
+          ship: shipProp?.status?.name || '',
         };
       });
       return json(unlinked);
