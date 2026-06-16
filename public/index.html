@@ -319,10 +319,24 @@ function saveScroll(){savedScroll=window.scrollY;}
 function restoreScroll(){setTimeout(()=>window.scrollTo(0,savedScroll),50);}
 
 async function loadSchema(){
-  try{const r=await fetch(API+'?action=schema');schema=await r.json();}catch(e){}
+  const SK='schema_req_v1';
+  try{
+    const cached=localStorage.getItem(SK);
+    if(cached){schema=JSON.parse(cached);}
+    const r=await fetch(API+'?action=schema');
+    const d=await r.json();
+    if(!d.error){schema=d;localStorage.setItem(SK,JSON.stringify(d));}
+  }catch(e){}
 }
 async function loadShipto(){
-  try{const r=await fetch(API+'?action=shipto_list');const d=await r.json();shiptoList=Array.isArray(d)?d:[];}catch(e){shiptoList=[];}
+  const SK='shipto_v1';
+  try{
+    const cached=localStorage.getItem(SK);
+    if(cached){shiptoList=JSON.parse(cached);}
+    const r=await fetch(API+'?action=shipto_list');
+    const d=await r.json();
+    if(Array.isArray(d)){shiptoList=d;localStorage.setItem(SK,JSON.stringify(d));}
+  }catch(e){shiptoList=[];}
 }
 async function loadRecords(silent=false){
   if(!silent) lbar(30);

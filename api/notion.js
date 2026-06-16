@@ -128,7 +128,7 @@ export default async function handler(req) {
 
   try {
 
-    // ── SCHEMA ──────────────────────────────────────────────────
+    // ── SCHEMA (cached 24h) ─────────────────────────────────────
     if (action === 'schema') {
       const res  = await fetch(`https://api.notion.com/v1/databases/${DB_REQ}`, { headers: nHeaders() });
       const data = await res.json();
@@ -143,7 +143,10 @@ export default async function handler(req) {
         const type = p.type === 'select' ? 'select' : p.type === 'status' ? 'status' : null;
         if (type) schema[key] = { type, options: p[p.type].options.map(o => o.name) };
       }
-      return json(schema);
+      return new Response(JSON.stringify(schema), { headers: {
+        ...cors, 'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=86400', // 24h
+      }});
     }
 
     // ── SHIPTO LIST ──────────────────────────────────────────────
@@ -162,20 +165,30 @@ export default async function handler(req) {
 
     // ── REQ LIST ────────────────────────────────────────────────
     if (action === 'list') {
-      const results = await queryAll(DB_REQ);
-
-      // Collect all IDs to fetch in parallel
-      const packIds   = collectRelIds(results, 'R_%3D%3A');
-      const shiptoIds = collectRelIds(results, 'QUXO');
-
-      // Fetch pack titles and shipto info in parallel
-      const [packTitles, shiptoMap] = await Promise.all([
-        batchFetchPages(packIds, page => {
-          const titleP = Object.values(page.properties || {}).find(v => v.type === 'title');
-          return { label: titleP?.title?.[0]?.plain_text || '' };
-        }),
-        fetchShiptoMap(shiptoIds),
+      // Fetch req pages and full shipto DB in parallel (faster than per-ID lookup)
+      const [results, shiptoResults] = await Promise.all([
+        queryAll(DB_REQ),
+        queryAll(DB_SHIPTO, []),
       ]);
+
+      // Build shipto map from full DB (one query instead of N queries)
+      const shiptoMap = {};
+      for (const page of shiptoResults) {
+        const props  = page.properties || {};
+        const titleP = Object.values(props).find(v => v.type === 'title');
+        const nameP  = Object.values(props).find(v => v.id === '~zOg');
+        shiptoMap[page.id] = {
+          code: titleP?.title?.[0]?.plain_text || '',
+          name: nameP?.rich_text?.[0]?.plain_text || '',
+        };
+      }
+
+      // Only fetch pack pages that are actually referenced
+      const packIds = collectRelIds(results, 'R_%3D%3A');
+      const packTitles = await batchFetchPages(packIds, page => {
+        const titleP = Object.values(page.properties || {}).find(v => v.type === 'title');
+        return { label: titleP?.title?.[0]?.plain_text || '' };
+      });
 
       return json(results.map(page => {
         const p = page.properties || {};
@@ -281,7 +294,10 @@ export default async function handler(req) {
           if (key) schema[key] = { type:'status', options: p.status.options.map(o => o.name) };
         }
       }
-      return json(schema);
+      return new Response(JSON.stringify(schema), { headers: {
+        ...cors, 'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=86400',
+      }});
     }
 
     // ── PACK LIST ───────────────────────────────────────────────
@@ -404,24 +420,37 @@ export default async function handler(req) {
         const key = { 'EmmN':'公司狀態','NInZ':'客戶狀態' }[p.id];
         if (key && p.type === 'select') schema[key] = { type:'select', options: p.select.options.map(o => o.name) };
       }
-      return json(schema);
+      return new Response(JSON.stringify(schema), { headers: {
+        ...cors, 'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=86400',
+      }});
     }
 
     // ── FREIGHT LIST ─────────────────────────────────────────────
     if (action === 'freight_list') {
       const results = await queryAll(DB_FREIGHT);
 
-      const clientRelIds = collectRelIds(results, 'mar%5B');
-      const packRelIds   = collectRelIds(results, 'Dj%7Dq');
-
-      // Fetch client info and pack titles in parallel
-      const [clientMap, packTitleMap] = await Promise.all([
-        fetchShiptoMap(clientRelIds),
+      // Fetch full shipto DB + pack pages in parallel
+      const packRelIds = collectRelIds(results, 'Dj%7Dq');
+      const [shiptoResultsF, packTitleMap] = await Promise.all([
+        queryAll(DB_SHIPTO, []),
         batchFetchPages(packRelIds, page => {
           const titleP = Object.values(page.properties || {}).find(v => v.type === 'title');
           return { label: titleP?.title?.[0]?.plain_text || '' };
         }),
       ]);
+
+      // Build client map from full shipto DB
+      const clientMap = {};
+      for (const page of shiptoResultsF) {
+        const props  = page.properties || {};
+        const titleP = Object.values(props).find(v => v.type === 'title');
+        const nameP  = Object.values(props).find(v => v.id === '~zOg');
+        clientMap[page.id] = {
+          code: titleP?.title?.[0]?.plain_text || '',
+          name: nameP?.rich_text?.[0]?.plain_text || '',
+        };
+      }
 
       return json(results.map(page => {
         const p = page.properties || {};
