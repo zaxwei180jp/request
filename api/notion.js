@@ -22,6 +22,17 @@ const cors = {
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
+// Fetch with retry on 429 rate limit
+async function nFetch(url, opts, retries=3) {
+  for (let i=0; i<retries; i++) {
+    const res = await fetch(url, opts);
+    if (res.status !== 429) return res;
+    const wait = parseInt(res.headers.get('Retry-After')||'1') * 1000;
+    await new Promise(r => setTimeout(r, wait || (i+1)*500));
+  }
+  return fetch(url, opts);
+}
+
 // ── Shared helpers ──────────────────────────────────────────────
 
 // Fetch all pages from a DB with pagination
@@ -30,7 +41,7 @@ async function queryAll(dbId, sorts = [{ timestamp: 'created_time', direction: '
   while (true) {
     const body = { page_size: 100, sorts };
     if (cursor) body.start_cursor = cursor;
-    const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+    const res = await nFetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
       method: 'POST', headers: nHeaders(), body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -44,7 +55,7 @@ async function queryAll(dbId, sorts = [{ timestamp: 'created_time', direction: '
 
 // Fetch a single page
 async function fetchPage(id) {
-  const res = await fetch(`https://api.notion.com/v1/pages/${id}`, { headers: nHeaders() });
+  const res = await nFetch(`https://api.notion.com/v1/pages/${id}`, { headers: nHeaders() });
   return res.json();
 }
 

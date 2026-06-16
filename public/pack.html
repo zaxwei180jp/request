@@ -207,20 +207,39 @@ let statusFilters={seal:'',ship:''};
 let unlinkedReqs=[],selectedReqIds=new Set(),viewingId=null;
 
 function lbar(p){const b=document.getElementById('lbar');b.style.width=p+'%';if(p>=100)setTimeout(()=>b.style.width='0',400);}
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function toast(m,dur=2500){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);}
+function toastErr(label,e){toast(`❌ ${label}：${e?.message||e||'未知錯誤'}`,4000);}
+
+const CACHE_KEY='pack_cache_v1';
+function saveCache(d){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data:d}));}catch(e){}}
+function loadCache(){try{const r=localStorage.getItem(CACHE_KEY);if(!r)return null;const{ts,data}=JSON.parse(r);if(Date.now()-ts>300000)return null;return data;}catch(e){return null;}}
+
+let savedScroll=0;
+function saveScroll(){savedScroll=window.scrollY;}
+function restoreScroll(){setTimeout(()=>window.scrollTo(0,savedScroll),50);}
 
 async function loadSchema(){try{const r=await fetch(API+'?action=pack_schema');schema=await r.json();}catch(e){}}
-async function loadRecords(){
-  lbar(30);
+async function loadRecords(silent=false){
+  if(!silent) lbar(30);
   try{
-    const r=await fetch(API+'?action=pack_list');lbar(80);
+    const r=await fetch(API+'?action=pack_list');
+    if(!silent) lbar(80);
     const d=await r.json();if(d.error)throw new Error(d.error);
-    records=d;lbar(100);
+    records=d;saveCache(d);
+    if(!silent) lbar(100);
     const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
-  }catch(e){lbar(100);toast('⚠️ '+e.message);document.getElementById('hdrSub').textContent='載入失敗';}
+  }catch(e){
+    if(!silent){lbar(100);toastErr('載入失敗',e);}
+    document.getElementById('hdrSub').textContent='載入失敗';
+  }
 }
-async function loadAll(){await Promise.allSettled([loadSchema(),loadRecords()]);renderAll();}
+async function loadAll(){
+  const cached=loadCache();
+  if(cached){records=cached;renderAll();document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;}
+  await Promise.allSettled([loadSchema(),loadRecords(!!cached)]);
+  renderAll();
+}
 
 function bc(s){return{'完成':'b-done','進行中':'b-prog','未開始':'b-pend','取消':'b-canc'}[s]||'b-pend';}
 function badge(s){return s?`<span class="badge ${bc(s)}">${s}</span>`:'';}
@@ -339,7 +358,7 @@ async function saveNew(){
     const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
     toast(`✅ ${body.packId} 已新增`);closeAdd();await loadRecords();renderAll();
-  }catch(e){toast('❌ '+e.message);}
+  }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
 
@@ -353,7 +372,7 @@ function cycleStatus(id,key){
 function openDetail(pageId){
   const r=records.find(x=>x._pageId===pageId);
   if(!r){toast('找不到資料');return;}
-  viewingId=pageId;
+  saveScroll();viewingId=pageId;
   document.getElementById('dId').textContent=r.id||'—';
   document.getElementById('dbody').innerHTML=`
     <div class="dc">
@@ -379,7 +398,7 @@ function openDetail(pageId){
     </div>`;
   document.getElementById('detailOv').classList.add('open');
 }
-function closeDetail(){document.getElementById('detailOv').classList.remove('open');}
+function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
   const body={
@@ -394,7 +413,7 @@ async function saveDetail(){
     const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
     toast('✅ 已儲存');await loadRecords();renderAll();openDetail(viewingId);
-  }catch(e){toast('❌ '+e.message);}
+  }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
 loadAll();
