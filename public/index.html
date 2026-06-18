@@ -117,6 +117,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast.show{opacity:1}
 .lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
 
+/* PRODUCT SUGGEST */
+.prod-wrap{position:relative}
+.prod-suggest{position:absolute;top:100%;left:0;right:0;background:var(--card);border:.5px solid var(--border2);border-radius:var(--rs);z-index:10;box-shadow:var(--shadow);overflow:hidden;display:none}
+.prod-suggest.show{display:block}
+.prod-item{padding:12px 14px;cursor:pointer;border-bottom:.5px solid var(--border)}
+.prod-item:last-child{border-bottom:none}
+.prod-item:active{background:var(--bg2)}
+.prod-code{font-size:13px;font-weight:700;color:var(--purple)}
+.prod-name{font-size:13px;color:var(--muted);margin-top:2px}
+.prod-price{font-size:12px;color:var(--hint);margin-top:1px}
 /* ADD SHEET */
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end}
 .ov.open{display:flex}
@@ -237,7 +247,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="fld"><label>需求單編號</label><input id="a_id" placeholder="RE230"></div>
       <div class="r2">
         <div class="fld"><label>委託人</label><input id="a_client" placeholder="姓名"></div>
-        <div class="fld"><label>商品編號</label><input id="a_code" placeholder="選填"></div>
+        <div class="fld prod-wrap">
+          <label>商品編號</label>
+          <input id="a_code" placeholder="輸入編號自動帶入" autocomplete="off" oninput="searchProduct(this.value)">
+          <div class="prod-suggest" id="prodSuggest"></div>
+        </div>
       </div>
       <div class="fld"><label>商品名稱</label><input id="a_name" placeholder="商品名稱"></div>
       <div class="r2">
@@ -561,11 +575,68 @@ function nextId(){
 }
 function openAdd(){
   document.getElementById('a_id').value=nextId();
-  ['a_client','a_code','a_name','a_qty','a_price','a_quote','a_submit','a_done'].forEach(id=>document.getElementById(id).value='');
+  ['a_client','a_code','a_name','a_quote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('a_qty').value='1';
+  document.getElementById('a_price').value='';
   document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
-  ['a_shop','a_type','a_attr','a_buy','a_pay','a_ship'].forEach(id=>fillSel(id,{a_shop:'商店',a_type:'商品類型',a_attr:'購買屬性',a_buy:'購買狀態',a_pay:'付款狀態',a_ship:'發貨狀態'}[id]));
+  document.getElementById('a_done').value='';
+  document.getElementById('prodSuggest').classList.remove('show');
+
+  // Set defaults from schema
+  const keyMap={a_shop:'商店',a_type:'商品類型',a_attr:'購買屬性',a_buy:'購買狀態',a_pay:'付款狀態',a_ship:'發貨狀態'};
+  ['a_shop','a_type','a_attr','a_buy','a_pay','a_ship'].forEach(id=>fillSel(id,keyMap[id]));
   fillShiptoSel('a_shipto');
+
+  // Apply defaults
+  setSelVal('a_shop','Costco');
+  setSelVal('a_type','お菓子');
+  setSelVal('a_attr','正常');
+  setSelVal('a_pay','未付款');
+  setSelVal('a_ship','未開始');
+  // Set default shipto: W-82
+  const shiptoOpt=[...document.getElementById('a_shipto').options].find(o=>o.text.startsWith('W-82 '));
+  if(shiptoOpt) document.getElementById('a_shipto').value=shiptoOpt.value;
+
   document.getElementById('addOv').classList.add('open');
+}
+
+function setSelVal(id, val){
+  const el=document.getElementById(id);
+  const opt=[...el.options].find(o=>o.value===val);
+  if(opt) el.value=val;
+}
+
+let _prodTimer=null;
+async function searchProduct(code){
+  clearTimeout(_prodTimer);
+  const suggest=document.getElementById('prodSuggest');
+  if(!code||code.length<2){suggest.classList.remove('show');return;}
+  _prodTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(`${API}?action=product_search&code=${encodeURIComponent(code)}`);
+      const items=await r.json();
+      if(!items.length){suggest.classList.remove('show');return;}
+      suggest.innerHTML=items.map((p,i)=>`
+        <div class="prod-item" onclick="applyProduct(${i})">
+          <div class="prod-code">${p.code}</div>
+          <div class="prod-name">${p.name||'—'}</div>
+          <div class="prod-price">¥${Number(p.price||0).toLocaleString()}</div>
+        </div>`).join('');
+      suggest.dataset.items=JSON.stringify(items);
+      suggest.classList.add('show');
+    }catch(e){}
+  },400);
+}
+
+function applyProduct(i){
+  const suggest=document.getElementById('prodSuggest');
+  const items=JSON.parse(suggest.dataset.items||'[]');
+  const p=items[i];
+  if(!p) return;
+  document.getElementById('a_code').value=p.code;
+  document.getElementById('a_name').value=p.name;
+  document.getElementById('a_price').value=p.price||'';
+  suggest.classList.remove('show');
 }
 function closeAdd(){document.getElementById('addOv').classList.remove('open');}
 async function saveNew(){
@@ -694,6 +765,10 @@ async function deleteRecord(){
     toast('🗑️ 已刪除');closeDetail();await loadRecords();renderAll();
   }catch(e){toastErr('刪除失敗',e);}
 }
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.prod-wrap')) document.getElementById('prodSuggest')?.classList.remove('show');
+});
 
 loadAll();
 </script>

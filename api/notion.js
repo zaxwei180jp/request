@@ -5,6 +5,7 @@ const DB_REQ         = process.env.NOTION_DATABASE_ID;
 const DB_SHIPTO      = '2fd5bfd83387803fbb46e3dca0ea739b';
 const DB_PACK        = '2fe5bfd83387801ebc35f492744f41e1';
 const DB_FREIGHT     = '3035bfd833878045bfedea25f1f5bab6';
+const DB_PRODUCT     = '3465bfd833878052a7b2edc45d265f50';
 const NOTION_VERSION = '2022-06-28';
 
 const nHeaders = () => ({
@@ -517,6 +518,47 @@ export default async function handler(req) {
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message }, 500);
       return json({ ok: true, id: data.id });
+    }
+
+    // ── PRODUCT SEARCH ──────────────────────────────────────────
+    if (action === 'product_search') {
+      const code = url.searchParams.get('code') || '';
+      if (!code) return json([]);
+      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
+        method: 'POST', headers: nHeaders(),
+        body: JSON.stringify({
+          page_size: 5,
+          filter: {
+            property: 'title',
+            title: { contains: code }
+          }
+        }),
+      });
+      const data = await res.json();
+      if (!data.results) return json([]);
+      const results = data.results.map(page => {
+        const props  = page.properties || {};
+        const titleP = Object.values(props).find(v => v.type === 'title');
+        const nameP  = Object.values(props).find(v => v.id === 'tname' || decodeURIComponent(v.id) === 'tname');
+        const priceP = Object.values(props).find(v => v.id === 'jprice' || decodeURIComponent(v.id) === 'jprice');
+        return {
+          code:  titleP?.title?.[0]?.plain_text || '',
+          name:  nameP?.rich_text?.[0]?.plain_text || nameP?.title?.[0]?.plain_text || '',
+          price: priceP?.number ?? priceP?.formula?.number ?? 0,
+        };
+      }).filter(r => r.code);
+      return json(results);
+    }
+
+    // ── PRODUCT DEBUG ─────────────────────────────────────────────
+    if (action === 'product_debug') {
+      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
+        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
+      });
+      const data = await res.json();
+      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
+      const props = data.results[0].properties;
+      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
     }
 
     return json({ error: 'Unknown action' }, 400);
