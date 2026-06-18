@@ -617,7 +617,7 @@ async function searchProduct(code){
       const items=await r.json();
       if(!items.length){suggest.classList.remove('show');return;}
       suggest.innerHTML=items.map((p,i)=>`
-        <div class="prod-item" onclick="applyProduct(${i})">
+        <div class="prod-item" data-idx="${i}">
           <div class="prod-code">${p.code}</div>
           <div class="prod-name">${p.name||'—'}</div>
           <div class="prod-price">¥${Number(p.price||0).toLocaleString()}</div>
@@ -767,6 +767,11 @@ async function deleteRecord(){
 }
 
 document.addEventListener('click', e=>{
+  const item = e.target.closest('.prod-item');
+  if(item){
+    applyProduct(parseInt(item.dataset.idx));
+    return;
+  }
   if(!e.target.closest('.prod-wrap')) document.getElementById('prodSuggest')?.classList.remove('show');
 });
 
