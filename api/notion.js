@@ -538,13 +538,14 @@ export default async function handler(req) {
       if (!data.results) return json([]);
       const results = data.results.map(page => {
         const props  = page.properties || {};
-        const titleP = Object.values(props).find(v => v.type === 'title');
-        const nameP  = Object.values(props).find(v => v.id === 'tname' || decodeURIComponent(v.id) === 'tname');
-        const priceP = Object.values(props).find(v => v.id === 'jprice' || decodeURIComponent(v.id) === 'jprice');
+        const titleP = Object.values(props).find(v => v.type === 'title');         // tname = title
+        const jnameP = Object.values(props).find(v => v.id === 'RgMq');            // jname
+        const priceP = Object.values(props).find(v => v.id === 'tQPF');            // jprice
+        const code = titleP?.title?.[0]?.plain_text || '';
         return {
-          code:  titleP?.title?.[0]?.plain_text || '',
-          name:  nameP?.rich_text?.[0]?.plain_text || nameP?.title?.[0]?.plain_text || '',
-          price: priceP?.number ?? priceP?.formula?.number ?? 0,
+          code,
+          name:  code,
+          price: priceP?.number ?? 0,
         };
       }).filter(r => r.code);
       return json(results);
