@@ -524,13 +524,14 @@ export default async function handler(req) {
     if (action === 'product_search') {
       const code = url.searchParams.get('code') || '';
       if (!code) return json([]);
+      // Search by idnumber (gFkD rich_text) field
       const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
         method: 'POST', headers: nHeaders(),
         body: JSON.stringify({
           page_size: 5,
           filter: {
-            property: 'title',
-            title: { contains: code }
+            property: 'idnumber',
+            rich_text: { contains: code }
           }
         }),
       });
@@ -538,13 +539,12 @@ export default async function handler(req) {
       if (!data.results) return json([]);
       const results = data.results.map(page => {
         const props  = page.properties || {};
-        const titleP = Object.values(props).find(v => v.type === 'title');         // tname = title
-        const jnameP = Object.values(props).find(v => v.id === 'RgMq');            // jname
-        const priceP = Object.values(props).find(v => v.id === 'tQPF');            // jprice
-        const code = titleP?.title?.[0]?.plain_text || '';
+        const titleP = Object.values(props).find(v => v.type === 'title');  // tname
+        const priceP = Object.values(props).find(v => v.id === 'tQPF');     // jprice
+        const idP    = Object.values(props).find(v => v.id === 'gFkD');     // idnumber
         return {
-          code,
-          name:  code,
+          code:  idP?.rich_text?.[0]?.plain_text || '',
+          name:  titleP?.title?.[0]?.plain_text || '',
           price: priceP?.number ?? 0,
         };
       }).filter(r => r.code);
