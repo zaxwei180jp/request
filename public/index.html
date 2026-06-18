@@ -6,7 +6,7 @@
 <title>需求單</title>
 <style>
 :root{
-  --purple:#534AB7;--pl:#EEEDFE;
+  --purple:#6B64B8;--pl:#EFEFF5;
   --bg:#F2F2F7;--card:#fff;--bg2:#E8E8ED;
   --text:#1C1C1E;--muted:#6C6C70;--hint:#AEAEB2;
   --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
@@ -69,9 +69,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .batch-opts{display:flex;gap:8px;flex-wrap:wrap}
 .batch-opt{border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
 .batch-opt:active{opacity:.75}
-.bo-buy{background:#E1F5EE;color:#0F6E56}
-.bo-pay{background:#E6F1FB;color:#185FA5}
-.bo-ship{background:#FAEEDA;color:#854F0B}
+.bo-buy{background:#E8F2ED;color:#3D7A65}
+.bo-pay{background:#E4EDF5;color:#3A6A94}
+.bo-ship{background:#F2EDE0;color:#7A5E2E}
 
 /* LIST */
 .list{padding:0 16px 120px;display:flex;flex-direction:column;gap:12px;padding-top:4px}
@@ -90,11 +90,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .bl{font-size:10px;color:var(--hint)}
 .badge{display:inline-flex;align-items:center;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;gap:4px}
 .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;display:inline-block}
-.b-done{background:#E1F5EE;color:#0F6E56}
-.b-pend{background:#FAEEDA;color:#854F0B}
-.b-ship{background:#FAECE7;color:#993C1D}
-.b-arr{background:#E6F1FB;color:#185FA5}
-.b-canc{background:#FCEBEB;color:#A32D2D}
+.b-done{background:#E8F2ED;color:#3D7A65}
+.b-pend{background:#F2EDE0;color:#7A5E2E}
+.b-ship{background:#F0E9E5;color:#8A5040}
+.b-arr{background:#E4EDF5;color:#3A6A94}
+.b-canc{background:#F0E8E8;color:#8A4444}
 
 .card-name{font-size:17px;font-weight:600;line-height:1.3;margin-bottom:12px}
 .card-price{font-size:18px;font-weight:700;float:right;margin-left:12px}
@@ -173,16 +173,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dsel{width:100%;border:none;background:transparent;font-size:16px;font-weight:600;color:var(--text);outline:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center;padding-right:16px}
 .sbtn{border:none;border-radius:20px;padding:7px 16px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .sbtn::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.8;display:inline-block}
-.sbtn.b-done{background:#E1F5EE;color:#0F6E56}
-.sbtn.b-pend{background:#FAEEDA;color:#854F0B}
-.sbtn.b-ship{background:#FAECE7;color:#993C1D}
-.sbtn.b-arr{background:#E6F1FB;color:#185FA5}
-.sbtn.b-canc{background:#FCEBEB;color:#A32D2D}
+.sbtn.b-done{background:#E8F2ED;color:#3D7A65}
+.sbtn.b-pend{background:#F2EDE0;color:#7A5E2E}
+.sbtn.b-ship{background:#F0E9E5;color:#8A5040}
+.sbtn.b-arr{background:#E4EDF5;color:#3A6A94}
+.sbtn.b-canc{background:#F0E8E8;color:#8A4444}
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
 .d-ro{font-size:16px;font-weight:600;color:var(--muted)}
 .d-big{font-size:22px;font-weight:700;color:var(--purple)}
 .ddel{padding:0 16px 30px}
-.btn-del{width:100%;background:#FCEBEB;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:#A32D2D;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-del{width:100%;background:#F0E8E8;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:#8A4444;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
 </style>
 </head>
 <body>
