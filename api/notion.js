@@ -140,7 +140,9 @@ export default async function handler(req) {
       };
       const schema = {};
       for (const p of Object.values(data.properties)) {
-        const key = ID_KEY[p.id]; if (!key) continue;
+        // Match both encoded and decoded IDs
+        const key = ID_KEY[p.id] || ID_KEY[encodeURIComponent(p.id)];
+        if (!key) continue;
         const type = p.type === 'select' ? 'select' : p.type === 'status' ? 'status' : null;
         if (type) schema[key] = { type, options: p[p.type].options.map(o => o.name) };
       }
