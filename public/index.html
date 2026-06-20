@@ -334,10 +334,13 @@ function restoreScroll(){setTimeout(()=>window.scrollTo(0,savedScroll),50);}
 
 async function loadSchema(){
   try{
-    const r=await fetch(API+'?action=schema');
+    const r=await fetch(API+'?action=schema',{cache:'no-store'});
     const d=await r.json();
-    if(!d.error) schema=d;
-  }catch(e){}
+    if(!d.error){
+      schema=d;
+      console.log('schema loaded, 商店 options:', d['商店']?.options);
+    }
+  }catch(e){console.error('schema error',e);}
 }
 async function loadShipto(){
   const SK='shipto_v1';
