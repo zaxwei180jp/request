@@ -146,7 +146,7 @@ export default async function handler(req) {
       }
       return new Response(JSON.stringify(schema), { headers: {
         ...cors, 'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=86400', // 24h
+        'Cache-Control': 'no-store'
       }});
     }
 
@@ -297,7 +297,7 @@ export default async function handler(req) {
       }
       return new Response(JSON.stringify(schema), { headers: {
         ...cors, 'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'no-store',
       }});
     }
 
@@ -423,7 +423,7 @@ export default async function handler(req) {
       }
       return new Response(JSON.stringify(schema), { headers: {
         ...cors, 'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'no-store',
       }});
     }
 
