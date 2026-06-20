@@ -333,13 +333,10 @@ function saveScroll(){savedScroll=window.scrollY;}
 function restoreScroll(){setTimeout(()=>window.scrollTo(0,savedScroll),50);}
 
 async function loadSchema(){
-  const SK='schema_req_v1';
   try{
-    const cached=localStorage.getItem(SK);
-    if(cached){schema=JSON.parse(cached);}
     const r=await fetch(API+'?action=schema');
     const d=await r.json();
-    if(!d.error){schema=d;localStorage.setItem(SK,JSON.stringify(d));}
+    if(!d.error) schema=d;
   }catch(e){}
 }
 async function loadShipto(){
