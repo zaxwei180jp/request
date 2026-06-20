@@ -576,7 +576,8 @@ function nextId(){
   const nums=records.map(r=>{const m=String(r.id).match(/^RE(\d+)$/i);return m?parseInt(m[1]):0;}).filter(n=>n>0);
   return 'RE'+(nums.length?Math.max(...nums)+1:1);
 }
-function openAdd(){
+async function openAdd(){
+  await loadSchema(); // ensure latest schema
   document.getElementById('a_id').value=nextId();
   ['a_client','a_code','a_name','a_quote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('a_qty').value='1';
