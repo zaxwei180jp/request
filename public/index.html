@@ -400,7 +400,7 @@ function filtered(){
   const base=baseFiltered();
   return base.filter(r=>{
     if(activeFilter==='buy_未開始') return r.buy==='未開始';
-    if(activeFilter==='pay_未付款') return r.pay==='未付款';
+    if(activeFilter==='pay_未付款') return r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買';
     if(activeFilter==='ship_集貨中') return r.ship==='集貨中';
     return true;
   });
@@ -423,8 +423,9 @@ function renderStats(){
   const base=baseFiltered();
   const q=document.getElementById('srchInput').value.trim();
   const unstarted=base.filter(r=>r.buy==='未開始').length;
-  const unpaid=base.filter(r=>r.pay==='未付款').length;
-  const unpaidAmt=base.filter(r=>r.pay==='未付款').reduce((s,r)=>s+Number(r.total||0),0);
+  const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
+  const unpaid=unpaidBase.length;
+  const unpaidAmt=unpaidBase.reduce((s,r)=>s+Number(r.total||0),0);
   const collecting=base.filter(r=>r.ship==='集貨中').length;
   const items=[
     {k:'all',n:base.length,l:q?`${base.length} 筆`:'總筆數'},
