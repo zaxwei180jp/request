@@ -663,7 +663,7 @@ async function saveNew(){
   try{
     const res=await fetch(API+'?action=create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已新增');closeAdd();await loadAll(true);
+    toast('✅ 已新增');closeAdd();await new Promise(r=>setTimeout(r,1500));await loadAll(true);
   }catch(e){toastErr('新增失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
