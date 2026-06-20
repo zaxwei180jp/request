@@ -562,6 +562,23 @@ export default async function handler(req) {
       return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
     }
 
+    // ── DB STATS ─────────────────────────────────────────────────
+    if (action === 'db_stats') {
+      const results = await queryAll(DB_REQ);
+      const ids = results.map(page => {
+        const props = page.properties || {};
+        const titleP = Object.values(props).find(v => v.type === 'title');
+        const displayP = Object.values(props).find(v => v.id === 'yHX%7B');
+        return displayP?.formula?.string || titleP?.title?.[0]?.plain_text || '';
+      }).filter(Boolean);
+      // Find RE numbers
+      const nums = ids.map(id => { const m = id.match(/^RE(\d+)$/i); return m ? parseInt(m[1]) : null; }).filter(n => n !== null).sort((a,b)=>a-b);
+      const max = nums.length ? Math.max(...nums) : 0;
+      const missing = [];
+      for (let i = 1; i <= max; i++) { if (!nums.includes(i)) missing.push(`RE${i}`); }
+      return json({ total: results.length, maxId: `RE${max}`, idCount: nums.length, missing });
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (e) {
