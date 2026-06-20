@@ -370,6 +370,11 @@ async function loadRecords(silent=false){
   }
 }
 async function loadAll(force=false){
+  if(force){
+    // Clear all caches on manual refresh
+    ['schema_req_v1','schema_pack_v1','schema_freight_v1','shipto_v1',
+     'req_cache_v1','pack_cache_v1','freight_cache_v1'].forEach(k=>localStorage.removeItem(k));
+  }
   if(!force){
     const cached=loadCache();
     if(cached){
