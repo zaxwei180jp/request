@@ -213,7 +213,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <p id="hdrSub">載入中…</p>
     </div>
     <div class="hdr-btns">
-      <button class="btn-icon" id="btnRef" onclick="loadAll()" aria-label="重新整理">
+      <button class="btn-icon" id="btnRef" onclick="loadAll(true)" aria-label="重新整理">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
       <button class="btn-icon" id="btnSelect" onclick="toggleSelect()">選取</button>
@@ -369,16 +369,16 @@ async function loadRecords(silent=false){
     document.getElementById('hdrSub').textContent='載入失敗';
   }
 }
-async function loadAll(){
-  // Show cached data instantly
-  const cached=loadCache();
-  if(cached){
-    records=cached;
-    renderAll();
-    document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;
+async function loadAll(force=false){
+  if(!force){
+    const cached=loadCache();
+    if(cached){
+      records=cached;
+      renderAll();
+      document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;
+    }
   }
-  // Then fetch fresh data in background
-  await Promise.allSettled([loadSchema(),loadShipto(),loadRecords(!!cached)]);
+  await Promise.allSettled([loadSchema(),loadShipto(),loadRecords(false)]);
   renderAll();
 }
 
@@ -557,7 +557,7 @@ async function batchUpdate(i){
     }catch(e){fail++;}
   }));
   toast(fail>0?`✅ ${ok} 筆成功 ❌ ${fail} 筆失敗`:`✅ ${ok} 筆已更新`);
-  selectedIds.clear();await loadRecords();renderAll();
+  selectedIds.clear();await loadAll(true);
 }
 
 // ADD
@@ -663,7 +663,7 @@ async function saveNew(){
   try{
     const res=await fetch(API+'?action=create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已新增');closeAdd();await loadRecords();renderAll();
+    toast('✅ 已新增');closeAdd();await loadAll(true);
   }catch(e){toastErr('新增失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
@@ -754,7 +754,7 @@ async function saveDetail(){
   try{
     const res=await fetch(`${API}?action=update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');await loadRecords();renderAll();openDetail(viewingId);
+    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
   }catch(e){toastErr('儲存失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
@@ -763,7 +763,7 @@ async function deleteRecord(){
   if(!r||!confirm(`確定刪除「${r.id}」？`))return;
   try{
     await fetch(`${API}?action=delete&id=${viewingId}`,{method:'DELETE'});
-    toast('🗑️ 已刪除');closeDetail();await loadRecords();renderAll();
+    toast('🗑️ 已刪除');closeDetail();await loadAll(true);
   }catch(e){toastErr('刪除失敗',e);}
 }
 

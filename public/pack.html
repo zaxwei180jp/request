@@ -146,7 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr-row">
     <div class="hdr-left"><h1>出貨單</h1><p id="hdrSub">載入中…</p></div>
     <div class="hdr-btns">
-      <button class="btn-icon" onclick="loadAll()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+      <button class="btn-icon" onclick="loadAll(true)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       <button class="btn-add" onclick="openAdd()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
     </div>
   </div>
@@ -243,10 +243,12 @@ async function loadRecords(silent=false){
     document.getElementById('hdrSub').textContent='載入失敗';
   }
 }
-async function loadAll(){
-  const cached=loadCache();
-  if(cached){records=cached;renderAll();document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;}
-  await Promise.allSettled([loadSchema(),loadRecords(!!cached)]);
+async function loadAll(force=false){
+  if(!force){
+    const cached=loadCache();
+    if(cached){records=cached;renderAll();document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;}
+  }
+  await Promise.allSettled([loadSchema(),loadRecords(false)]);
   renderAll();
 }
 
@@ -366,7 +368,7 @@ async function saveNew(){
   try{
     const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadRecords();renderAll();
+    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadAll(true);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
@@ -421,7 +423,7 @@ async function saveDetail(){
   try{
     const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');await loadRecords();renderAll();openDetail(viewingId);
+    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
