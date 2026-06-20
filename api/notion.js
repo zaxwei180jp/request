@@ -11,7 +11,7 @@ const NOTION_VERSION = '2022-06-28';
 const nHeaders = () => ({
   'Authorization': `Bearer ${NOTION_TOKEN}`,
   'Notion-Version': NOTION_VERSION,
-  'Content-Type': 'application/json',
+  'Content-Type': 'application/json; charset=utf-8',
 });
 
 const cors = {
@@ -21,7 +21,7 @@ const cors = {
 };
 
 const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' } });
 
 // Fetch with retry on 429 rate limit
 async function nFetch(url, opts, retries=3) {
@@ -145,7 +145,7 @@ export default async function handler(req) {
         if (type) schema[key] = { type, options: p[p.type].options.map(o => o.name) };
       }
       return new Response(JSON.stringify(schema), { headers: {
-        ...cors, 'Content-Type': 'application/json',
+        ...cors, 'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store'
       }});
     }
@@ -296,7 +296,7 @@ export default async function handler(req) {
         }
       }
       return new Response(JSON.stringify(schema), { headers: {
-        ...cors, 'Content-Type': 'application/json',
+        ...cors, 'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
       }});
     }
@@ -422,7 +422,7 @@ export default async function handler(req) {
         if (key && p.type === 'select') schema[key] = { type:'select', options: p.select.options.map(o => o.name) };
       }
       return new Response(JSON.stringify(schema), { headers: {
-        ...cors, 'Content-Type': 'application/json',
+        ...cors, 'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
       }});
     }
