@@ -377,12 +377,15 @@ export default async function handler(req) {
       });
       const packPage = await res.json();
       if (packPage.object === 'error') return json({ error: packPage.message }, 500);
-      // Write back to req pages
+      // Write back to req pages: set pack relation + 發貨狀態 → 已出貨
       if (body.reqPageIds?.length) {
         await Promise.all(body.reqPageIds.map(reqId =>
           fetch(`https://api.notion.com/v1/pages/${reqId}`, {
             method: 'PATCH', headers: nHeaders(),
-            body: JSON.stringify({ properties: { 'R_%3D%3A': { relation: [{ id: packPage.id }] } } }),
+            body: JSON.stringify({ properties: {
+              'R_%3D%3A': { relation: [{ id: packPage.id }] },
+              'ko~P': { status: { name: '已出貨' } },
+            }}),
           })
         ));
       }
