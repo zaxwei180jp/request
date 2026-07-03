@@ -44,7 +44,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stat-n{font-size:22px;font-weight:700;color:var(--purple)}
 .stat-l{font-size:10px;color:var(--hint);margin-top:4px}
 .list{padding:0 16px 120px;display:flex;flex-direction:column;gap:12px;padding-top:4px}
-.card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer}
+.card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid transparent}
+.card.selected{border-color:var(--purple);background:rgba(83,74,183,.05)}
+.card-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border2);display:none;flex-shrink:0;align-items:center;justify-content:center}
+.select-mode .card-check{display:flex}
+.card.selected .card-check{background:var(--purple);border-color:var(--purple);color:#fff;font-size:13px;font-weight:700}
+.batch{display:none;background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px;gap:14px;flex-direction:column}
+.batch.open{display:flex}
+.batch-top{display:flex;justify-content:space-between;align-items:center}
+.batch-count{font-size:15px;font-weight:700;color:var(--purple)}
+.batch-ctrl{display:flex;gap:8px}
+.batch-ctrl button{border:.5px solid var(--border2);border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;background:var(--card);color:var(--muted)}
+.batch-group-l{font-size:12px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.batch-opts{display:flex;gap:8px;flex-wrap:wrap}
+.batch-opt{border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.batch-opt:active{opacity:.75}
+.bo-seal{background:#E4EDF5;color:#3A6A94}
+.bo-ship{background:#E8F2ED;color:#3D7A65}
+.btn-icon.on{background:var(--purple);color:#fff}
 .card:active{opacity:.8}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .card-id{font-size:16px;font-weight:700;color:var(--purple)}
@@ -146,6 +163,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr-row">
     <div class="hdr-left"><h1>出貨單</h1><p id="hdrSub">載入中…</p></div>
     <div class="hdr-btns">
+      <button class="btn-icon" id="btnSelect" onclick="toggleSelect()">選取</button>
       <button class="btn-icon" onclick="loadAll(true)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       <button class="btn-add" onclick="openAdd()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
     </div>
@@ -158,6 +176,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="chips" id="chips"></div>
 <div class="chip-gap"></div>
 <div class="stats" id="statsBar"></div>
+<div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
 
 <!-- ADD -->
@@ -204,6 +223,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const API='/api/notion';
 let records=[],schema={};
 let statusFilters={seal:'',ship:''};
+let selectMode=false,selectedIds=new Set();
 let unlinkedReqs=[],selectedReqIds=new Set(),viewingId=null;
 
 function lbar(p){const b=document.getElementById('lbar');b.style.width=p+'%';if(p>=100)setTimeout(()=>b.style.width='0',400);}
@@ -288,13 +308,16 @@ function renderStats(){
 }
 
 function renderList(){
+  const el=document.getElementById('list');
+  if(selectMode) el.classList.add('select-mode'); else el.classList.remove('select-mode');
   const data=baseFiltered();
   const el=document.getElementById('list');
   if(!data.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>沒有符合的出貨單</p></div>`;return;}
   el.innerHTML=data.map(r=>`
-    <div class="card" onclick="openDetail('${r._pageId}')">
+    <div class="card${selectedIds.has(r._pageId)?' selected':''}" onclick="cardClick('${r._pageId}')">
       <div class="card-top">
-        <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="card-check">${selectedIds.has(r._pageId)?'✓':''}</div>
           <div class="card-id">${r.id||'—'}</div>
           ${r.clients?.length?`<div class="card-clients">${r.clients.join(' · ')}</div>`:''}
         </div>
@@ -432,6 +455,61 @@ async function saveDetail(){
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
+function toggleSelect(){
+  selectMode=!selectMode;selectedIds.clear();
+  const btn=document.getElementById('btnSelect');
+  btn.classList.toggle('on',selectMode);
+  btn.textContent=selectMode?'退出':'選取';
+  renderBatch();renderList();
+}
+function selectAll(){baseFiltered().forEach(r=>selectedIds.add(r._pageId));renderBatch();renderList();}
+function clearSelect(){selectedIds.clear();renderBatch();renderList();}
+
+function renderBatch(){
+  const panel=document.getElementById('batchPanel');
+  panel.classList.toggle('open',selectMode);
+  if(!selectMode)return;
+  const sealOpts=schema['封箱狀態']?.options||[];
+  const shipOpts=schema['發貨狀態']?.options||[];
+  const cnt=selectedIds.size;
+  const actions=[
+    ...sealOpts.map((o,i)=>({i,val:o,key:'seal'})),
+    ...shipOpts.map((o,i)=>({i:sealOpts.length+i,val:o,key:'ship'})),
+  ];
+  window._ba=actions;
+  panel.innerHTML=`
+    <div class="batch-top">
+      <span class="batch-count">已選 ${cnt} 筆</span>
+      <div class="batch-ctrl"><button onclick="selectAll()">全選</button><button onclick="clearSelect()">取消</button></div>
+    </div>
+    <div><div class="batch-group-l">封箱狀態</div><div class="batch-opts">${sealOpts.map((o,i)=>`<button class="batch-opt bo-seal" ${cnt===0?'disabled':''} onclick="batchUpdate(${i})">${o}</button>`).join('')}</div></div>
+    <div><div class="batch-group-l">發貨狀態</div><div class="batch-opts">${shipOpts.map((o,i)=>`<button class="batch-opt bo-ship" ${cnt===0?'disabled':''} onclick="batchUpdate(${sealOpts.length+i})">${o}</button>`).join('')}</div></div>`;
+}
+
+function cardClick(pageId){
+  if(selectMode){
+    if(selectedIds.has(pageId))selectedIds.delete(pageId);else selectedIds.add(pageId);
+    renderBatch();renderList();
+  } else { openDetail(pageId); }
+}
+
+async function batchUpdate(i){
+  const a=window._ba[i];if(!a||selectedIds.size===0)return;
+  if(!confirm(`確定將 ${selectedIds.size} 筆改為「${a.val}」？`))return;
+  const ids=[...selectedIds];let ok=0,fail=0;
+  await Promise.all(ids.map(async pid=>{
+    try{
+      const body={};
+      if(a.key==='seal') body.seal=a.val;
+      if(a.key==='ship') body.ship=a.val;
+      const res=await fetch(`${API}?action=pack_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const d=await res.json();if(d.error)fail++;else ok++;
+    }catch(e){fail++;}
+  }));
+  toast(fail>0?`✅ ${ok} 筆成功 ❌ ${fail} 筆失敗`:`✅ ${ok} 筆已更新`);
+  selectedIds.clear();await loadAll(true);
+}
+
 loadAll();
 </script>
 </body>
