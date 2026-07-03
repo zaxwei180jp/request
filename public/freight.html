@@ -306,10 +306,9 @@ function renderStats(){
 }
 
 function renderList(){
-  const el=document.getElementById('list');
-  if(selectMode) el.classList.add('select-mode'); else el.classList.remove('select-mode');
   const data=baseFiltered();
   const el=document.getElementById('list');
+  if(selectMode) el.classList.add('select-mode'); else el.classList.remove('select-mode');
   if(!data.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>沒有符合的運費資料</p></div>`;return;}
   el.innerHTML=data.map(r=>`
     <div class="card${selectedIds.has(r._pageId)?' selected':''}" onclick="cardClick('${r._pageId}')">
