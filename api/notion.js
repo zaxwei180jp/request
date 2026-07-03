@@ -71,9 +71,17 @@ function val(prop) {
     case 'status':     return prop.status?.name || '';
     case 'date':       return prop.date?.start || '';
     case 'formula':    return prop.formula?.string ?? (prop.formula?.number ?? '');
-    case 'rollup':
-      if (prop.rollup?.type === 'number') return prop.rollup.number ?? 0;
-      return prop.rollup?.array?.[0]?.rich_text?.[0]?.plain_text ?? prop.rollup?.array?.[0]?.number ?? '';
+    case 'rollup': {
+      const r = prop.rollup;
+      if (r?.type === 'number') return r.number ?? 0;
+      if (r?.type === 'date')   return r.date?.start || '';
+      const item = r?.array?.[0];
+      if (!item) return '';
+      if (item.type === 'date')       return item.date?.start || '';
+      if (item.type === 'rich_text')  return item.rich_text?.[0]?.plain_text || '';
+      if (item.type === 'number')     return item.number ?? 0;
+      return '';
+    }
     case 'relation':   return prop.relation || [];
     default:           return null;
   }
