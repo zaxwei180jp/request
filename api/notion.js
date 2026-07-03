@@ -478,6 +478,7 @@ export default async function handler(req) {
           clientStatus:  g('NInZ'),
           note:          g('MfK%60'),
           weightDiff:    g('hVw%60'),
+          date:          g('JEQR'),
           clientCode:    clientRel.map(r => clientMap[r.id]?.code || '').filter(Boolean).join(', '),
           clientName:    clientRel.map(r => clientMap[r.id]?.name || '').filter(Boolean).join(', '),
         };
@@ -582,16 +583,6 @@ export default async function handler(req) {
       const missing = [];
       for (let i = 1; i <= max; i++) { if (!nums.includes(i)) missing.push(`RE${i}`); }
       return json({ total: results.length, maxId: `RE${max}`, idCount: nums.length, missing });
-    }
-
-    if (action === 'freight_debug') {
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_FREIGHT}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
-      const props = data.results[0].properties;
-      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
     }
 
     return json({ error: 'Unknown action' }, 400);
