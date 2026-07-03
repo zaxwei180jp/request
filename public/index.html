@@ -497,7 +497,7 @@ function renderList(){
         </div>
       </div>
       <div>
-        <span class="card-price">${r.price?'¥'+Number(r.price).toLocaleString():''}</span>
+        <span class="card-price">${r.total?'¥'+Number(r.total).toLocaleString():(r.price&&r.qty?'¥'+( Number(r.price)*Number(r.qty)).toLocaleString():'')}</span>
         <div class="card-name">${r.name||'（未填商品）'}</div>
       </div>
       <div class="bricks">
