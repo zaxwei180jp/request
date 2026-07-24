@@ -429,15 +429,17 @@ function renderStats(){
   const unpaid=unpaidBase.length;
   const unpaidAmt=unpaidBase.reduce((s,r)=>s+Number(r.total||0),0);
   const collecting=base.filter(r=>r.ship==='集貨中').length;
+  const profit=base.reduce((s,r)=>s+(Number(r.quote||0)-Number(r.total||0)),0);
   const items=[
     {k:'all',n:base.length,l:q?`${base.length} 筆`:'總筆數'},
     {k:'buy_未開始',n:unstarted,l:'購買未開始'},
     {k:'pay_未付款',n:unpaid,l:'未付款',s:'¥'+unpaidAmt.toLocaleString()},
     {k:'ship_集貨中',n:collecting,l:'發貨集貨中'},
+    {k:'profit',n:'¥'+profit.toLocaleString(),l:'報價差額',noFilter:true},
   ];
   document.getElementById('statsBar').innerHTML=items.map(i=>`
-    <div class="stat${activeFilter===i.k?' on':''}" onclick="setFilter('${i.k}')">
-      <div class="stat-n">${i.n}</div>
+    <div class="stat${activeFilter===i.k?' on':''}" onclick="${i.noFilter?'':''+ `setFilter('${i.k}')`}">
+      <div class="stat-n" style="${typeof i.n==='string'?'font-size:16px':''}"> ${i.n}</div>
       ${i.s?`<div class="stat-s">${i.s}</div>`:''}
       <div class="stat-l">${i.l}</div>
     </div>`).join('');
