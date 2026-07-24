@@ -326,10 +326,11 @@ function renderList(){
       <div class="card-client">${r.clientCode||''}${r.clientName?' '+r.clientName:''}</div>
       <div class="bricks">
         <div class="brick"><div class="brick-l">PJ箱號</div><div class="brick-v">${r.pjBox||'—'}</div></div>
-        <div class="brick"><div class="brick-l">重量</div><div class="brick-v">${r.weight||0} KG</div></div>
+        <div class="brick"><div class="brick-l">日期</div><div class="brick-v">${r.date||'—'}</div></div>
         <div class="brick"><div class="brick-l">公司運費</div><div class="brick-v">${fmt(r.companyAmount)}</div></div>
         <div class="brick"><div class="brick-l">客戶運費</div><div class="brick-v">${fmt(r.clientAmount)}</div></div>
-        <div class="brick span2"><div class="brick-l">日期</div><div class="brick-v">${r.date||'—'}</div></div>
+        <div class="brick"><div class="brick-l">重量</div><div class="brick-v">${r.weight||0} KG</div></div>
+        <div class="brick"><div class="brick-l">重量差</div><div class="brick-v">${r.weightDiff||'—'}</div></div>
       </div>
       ${r.note?`<div class="card-note">${r.note}</div>`:''}
     </div>`).join('');
