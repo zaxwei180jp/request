@@ -294,7 +294,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回
     </button>
     <span class="d-id" id="dId"></span>
-    <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sd" style="background:var(--bg2);color:var(--text);border:.5px solid var(--border2)" onclick="copyToNew()">複製新增</button>
+      <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
+    </div>
   </div>
   <div class="dbody" id="dbody"></div>
   <div class="ddel"><button class="btn-del" onclick="deleteRecord()">🗑 刪除這筆</button></div>
@@ -736,6 +739,39 @@ function openDetail(pageId){
     `;
   document.getElementById('detailOv').classList.add('open');
 }
+function copyToNew(){
+  const r=records.find(x=>x._pageId===viewingId);
+  if(!r) return;
+  closeDetail();
+  openAdd();
+  // Wait for openAdd to finish then fill fields
+  setTimeout(()=>{
+    // Increment ID by 1
+    const m=String(r.id).match(/^RE(\d+)$/i);
+    if(m) document.getElementById('a_id').value='RE'+(parseInt(m[1])+1);
+    // Fill all fields from current record
+    document.getElementById('a_client').value=r.client||'';
+    document.getElementById('a_name').value=r.name||'';
+    document.getElementById('a_code').value=r.code||'';
+    document.getElementById('a_qty').value=r.qty||1;
+    document.getElementById('a_price').value=r.price||'';
+    document.getElementById('a_quote').value=r.quote||'';
+    // Set selects
+    setSelVal('a_shop',r.shop||'');
+    setSelVal('a_type',r.type||'');
+    setSelVal('a_attr',r.attr||'');
+    setSelVal('a_buy',r.buy||'');
+    setSelVal('a_pay',r.pay||'');
+    setSelVal('a_ship',r.ship||'');
+    // Set shipto
+    const shiptoOpt=[...document.getElementById('a_shipto').options].find(o=>o.text.startsWith(r.shipto||''));
+    if(shiptoOpt) document.getElementById('a_shipto').value=shiptoOpt.value;
+    // Clear dates
+    document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
+    document.getElementById('a_done').value='';
+  },300);
+}
+
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
