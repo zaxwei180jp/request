@@ -739,37 +739,40 @@ function openDetail(pageId){
     `;
   document.getElementById('detailOv').classList.add('open');
 }
-function copyToNew(){
+async function copyToNew(){
   const r=records.find(x=>x._pageId===viewingId);
   if(!r) return;
   closeDetail();
-  openAdd();
-  // Wait for openAdd to finish then fill fields
-  setTimeout(()=>{
-    // Increment ID by 1
-    const m=String(r.id).match(/^RE(\d+)$/i);
-    if(m) document.getElementById('a_id').value='RE'+(parseInt(m[1])+1);
-    // Fill all fields from current record
-    document.getElementById('a_client').value=r.client||'';
-    document.getElementById('a_name').value=r.name||'';
-    document.getElementById('a_code').value=r.code||'';
-    document.getElementById('a_qty').value=r.qty||1;
-    document.getElementById('a_price').value=r.price||'';
-    document.getElementById('a_quote').value=r.quote||'';
-    // Set selects
-    setSelVal('a_shop',r.shop||'');
-    setSelVal('a_type',r.type||'');
-    setSelVal('a_attr',r.attr||'');
-    setSelVal('a_buy',r.buy||'');
-    setSelVal('a_pay',r.pay||'');
-    setSelVal('a_ship',r.ship||'');
-    // Set shipto
-    const shiptoOpt=[...document.getElementById('a_shipto').options].find(o=>o.text.startsWith(r.shipto||''));
-    if(shiptoOpt) document.getElementById('a_shipto').value=shiptoOpt.value;
-    // Clear dates
-    document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
-    document.getElementById('a_done').value='';
-  },300);
+  await openAdd(); // wait for schema + shipto to load
+
+  // Increment ID by 1
+  const m=String(r.id).match(/RE(\d+)$/i);
+  if(m) document.getElementById('a_id').value='RE'+(parseInt(m[1])+1);
+
+  // Fill all fields
+  document.getElementById('a_client').value=r.client||'';
+  document.getElementById('a_name').value=r.name||'';
+  document.getElementById('a_code').value=r.code||'';
+  document.getElementById('a_qty').value=r.qty||1;
+  document.getElementById('a_price').value=r.price||'';
+  document.getElementById('a_quote').value=r.quote||'';
+
+  // Set selects
+  setSelVal('a_shop',r.shop||'');
+  setSelVal('a_type',r.type||'');
+  setSelVal('a_attr',r.attr||'');
+  setSelVal('a_buy',r.buy||'');
+  setSelVal('a_pay',r.pay||'');
+  setSelVal('a_ship',r.ship||'');
+
+  // Set shipto by matching code
+  const shiptoEl=document.getElementById('a_shipto');
+  const shiptoOpt=[...shiptoEl.options].find(o=>o.text.includes(r.shipto||''));
+  if(shiptoOpt) shiptoEl.value=shiptoOpt.value;
+
+  // Dates
+  document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
+  document.getElementById('a_done').value='';
 }
 
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
