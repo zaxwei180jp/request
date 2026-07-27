@@ -798,7 +798,7 @@ async function saveDetail(){
   try{
     const res=await fetch(`${API}?action=update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
+    await loadAll(true);openDetail(viewingId);toast('✅ 已儲存');
   }catch(e){toastErr('儲存失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
