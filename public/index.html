@@ -764,10 +764,10 @@ async function copyToNew(){
   setSelVal('a_pay',r.pay||'');
   setSelVal('a_ship',r.ship||'');
 
-  // Set shipto by matching code
+  // Set shipto by matching code from shiptoList
   const shiptoEl=document.getElementById('a_shipto');
-  const shiptoOpt=[...shiptoEl.options].find(o=>o.text.includes(r.shipto||''));
-  if(shiptoOpt) shiptoEl.value=shiptoOpt.value;
+  const shiptoMatch=shiptoList.find(s=>s.code===(r.shipto||''));
+  if(shiptoMatch) shiptoEl.value=shiptoMatch.id;
 
   // Dates
   document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
