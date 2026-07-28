@@ -264,8 +264,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="sec">金額 & 數量</div>
       <div class="r2">
-        <div class="fld"><label>數量</label><input id="a_qty" type="number" min="1" placeholder="1"></div>
-        <div class="fld"><label>¥ 單價</label><input id="a_price" type="number" placeholder="0"></div>
+        <div class="fld"><label>數量</label><input id="a_qty" type="number" min="1" placeholder="1" oninput="autoQuote()"></div>
+        <div class="fld"><label>¥ 單價</label><input id="a_price" type="number" placeholder="0" oninput="autoQuote()"></div>
       </div>
       <div class="fld"><label>報價</label><input id="a_quote" type="number" placeholder="選填"></div>
       <div class="sec">狀態</div>
@@ -745,9 +745,8 @@ async function copyToNew(){
   closeDetail();
   await openAdd(); // wait for schema + shipto to load
 
-  // Increment ID by 1
-  const m=String(r.id).match(/RE(\d+)$/i);
-  if(m) document.getElementById('a_id').value='RE'+(parseInt(m[1])+1);
+  // Use latest record ID + 1 (not current record)
+  document.getElementById('a_id').value=nextId();
 
   // Fill all fields
   document.getElementById('a_client').value=r.client||'';
@@ -809,6 +808,12 @@ async function deleteRecord(){
     await fetch(`${API}?action=delete&id=${viewingId}`,{method:'DELETE'});
     toast('🗑️ 已刪除');closeDetail();await loadAll(true);
   }catch(e){toastErr('刪除失敗',e);}
+}
+
+function autoQuote(){
+  const qty=Number(document.getElementById('a_qty').value)||0;
+  const price=Number(document.getElementById('a_price').value)||0;
+  if(qty>0&&price>0) document.getElementById('a_quote').value=qty*price;
 }
 
 document.addEventListener('click', e=>{
