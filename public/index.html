@@ -655,6 +655,7 @@ function applyProduct(i){
   document.getElementById('a_name').value=p.name;
   document.getElementById('a_price').value=p.price||'';
   suggest.classList.remove('show');
+  autoQuote();
 }
 function closeAdd(){document.getElementById('addOv').classList.remove('open');}
 async function saveNew(){
