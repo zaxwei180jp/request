@@ -184,6 +184,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ddel{padding:0 16px 30px}
 .btn-del{width:100%;background:#F0E8E8;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:#8A4444;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
 </style>
+<script src="/public/shared.js"></script>
 </head>
 <body>
 <div class="lbar" id="lbar"></div>
@@ -307,36 +308,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
-const API='/api/notion';
+// 本地狀態（index.html 特定）
 let records=[],schema={},shiptoList=[];
 let activeFilter='all',statusFilters={buy:'',pay:'',ship:''};
 let selectMode=false,selectedIds=new Set(),viewingId=null;
-
-function lbar(p){const b=document.getElementById('lbar');b.style.width=p+'%';if(p>=100)setTimeout(()=>b.style.width='0',400);}
-function toast(m,dur=2500){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);}
-function toastErr(label,e){toast(`❌ ${label}：${e?.message||e||'未知錯誤'}`,4000);}
-
-// ── Cache ──────────────────────────────────────────────────────
-const CACHE_KEY='req_cache_v1';
-const CACHE_TTL=5*60*1000; // 5 min
-
-function saveCache(data){
-  try{ localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data})); }catch(e){}
-}
-function loadCache(){
-  try{
-    const raw=localStorage.getItem(CACHE_KEY);
-    if(!raw) return null;
-    const {ts,data}=JSON.parse(raw);
-    if(Date.now()-ts>CACHE_TTL) return null;
-    return data;
-  }catch(e){return null;}
-}
-
-// ── Scroll position ────────────────────────────────────────────
-let savedScroll=0;
-function saveScroll(){savedScroll=window.scrollY;}
-function restoreScroll(){setTimeout(()=>window.scrollTo(0,savedScroll),50);}
 
 async function loadSchema(){
   try{
@@ -346,13 +321,12 @@ async function loadSchema(){
   }catch(e){}
 }
 async function loadShipto(){
-  const SK='shipto_v1';
   try{
-    const cached=localStorage.getItem(SK);
+    const cached=localStorage.getItem(STORAGE_KEYS.SHIPTO);
     if(cached){shiptoList=JSON.parse(cached);}
     const r=await fetch(API+'?action=shipto_list');
     const d=await r.json();
-    if(Array.isArray(d)){shiptoList=d;localStorage.setItem(SK,JSON.stringify(d));}
+    if(Array.isArray(d)){shiptoList=d;localStorage.setItem(STORAGE_KEYS.SHIPTO,JSON.stringify(d));}
   }catch(e){shiptoList=[];}
 }
 async function loadRecords(silent=false){
@@ -396,17 +370,13 @@ function clearSearch(){
   renderAll();
 }
 
-function bc(s){return{'完成':'b-done','未開始':'b-pend','進行中':'b-pend','已出貨':'b-ship','已送達':'b-arr','取消':'b-canc','集貨中':'b-pend','待付款':'b-pend','未付款':'b-pend'}[s]||'b-pend';}
-function badge(s){return s?`<span class="badge ${bc(s)}">${s}</span>`:'';}
-function scls(s){return{'完成':'b-done','未開始':'b-pend','進行中':'b-pend','已出貨':'b-ship','已送達':'b-arr','取消':'b-canc','集貨中':'b-pend','待付款':'b-pend','未付款':'b-pend'}[s]||'b-def';}
-
 function baseFiltered(){
   const q=document.getElementById('srchInput').value.toLowerCase();
   return records.filter(r=>{
     const mQ=!q||(r.id+r.client+r.name+r.code+r.shop).toLowerCase().includes(q);
-    const mB=!statusFilters.buy||r.buy===statusFilters.buy;
-    const mP=!statusFilters.pay||r.pay===statusFilters.pay;
-    const mS=!statusFilters.ship||r.ship===statusFilters.ship;
+    const mB=matchesFilter(statusFilters.buy,r.buy);
+    const mP=matchesFilter(statusFilters.pay,r.pay);
+    const mS=matchesFilter(statusFilters.ship,r.ship);
     return mQ&&mB&&mP&&mS;
   });
 }
@@ -421,15 +391,24 @@ function filtered(){
 }
 
 function renderChips(){
-  const buyOpts=schema['購買狀態']?.options||[];
-  const payOpts=schema['付款狀態']?.options||[];
-  const shipOpts=schema['發貨狀態']?.options||[];
+  const buyOpts=getSchemaOptions(schema,'購買狀態');
+  const payOpts=getSchemaOptions(schema,'付款狀態');
+  const shipOpts=getSchemaOptions(schema,'發貨狀態');
   const all=[
     ...buyOpts.map(o=>({k:'buy',v:o,l:`購買:${o}`})),
     ...payOpts.map(o=>({k:'pay',v:o,l:`付款:${o}`})),
     ...shipOpts.map(o=>({k:'ship',v:o,l:`發貨:${o}`})),
   ];
-  document.getElementById('chips').innerHTML=all.map(c=>`<span class="chip${statusFilters[c.k]===c.v?' on':''}" onclick="toggleChip('${c.k}','${c.v}')">${c.l}</span>`).join('');
+  document.getElementById('chips').innerHTML=all.map(c=>`<span class="chip${statusFilters[c.k]===c.v?' on':''}" data-k="${c.k}" data-v="${c.v}">${c.l}</span>`).join('');
+  // 事件委派
+  document.getElementById('chips').addEventListener('click', e => {
+    const span = e.target.closest('.chip');
+    if (span) {
+      const k = span.dataset.k;
+      const v = span.dataset.v;
+      if (k && v) toggleChip(k, v);
+    }
+  });
 }
 function toggleChip(k,v){statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
 
@@ -439,9 +418,9 @@ function renderStats(){
   const unstarted=base.filter(r=>r.buy==='未開始').length;
   const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
   const unpaid=unpaidBase.length;
-  const unpaidAmt=unpaidBase.reduce((s,r)=>s+Number(r.total||0),0);
+  const unpaidAmt=sum(unpaidBase, r => toNumber(r.total));
   const collecting=base.filter(r=>r.ship==='集貨中').length;
-  const profit=base.reduce((s,r)=>s+(Number(r.quote||0)-Number(r.total||0)),0);
+  const profit=sum(base, r => toNumber(r.quote) - toNumber(r.total));
   const items=[
     {k:'all',n:base.length,l:q?`${base.length} 筆`:'總筆數'},
     {k:'buy_未開始',n:unstarted,l:'購買未開始'},
@@ -450,11 +429,19 @@ function renderStats(){
     {k:'profit',n:'¥'+profit.toLocaleString(),l:'報價差額',noFilter:true},
   ];
   document.getElementById('statsBar').innerHTML=items.map(i=>`
-    <div class="stat${activeFilter===i.k?' on':''}" onclick="${i.noFilter?'':''+ `setFilter('${i.k}')`}">
+    <div class="stat${activeFilter===i.k?' on':''}" ${i.noFilter?'':'data-filter-k="'+i.k+'"'}>
       <div class="stat-n" style="${typeof i.n==='string'?'font-size:16px':''}"> ${i.n}</div>
       ${i.s?`<div class="stat-s">${i.s}</div>`:''}
       <div class="stat-l">${i.l}</div>
     </div>`).join('');
+  // 事件委派
+  document.getElementById('statsBar').addEventListener('click', e => {
+    const stat = e.target.closest('.stat[data-filter-k]');
+    if (stat) {
+      const k = stat.dataset.filterK;
+      if (k) setFilter(k);
+    }
+  });
 }
 function setFilter(k){activeFilter=k;renderAll();}
 
@@ -462,9 +449,9 @@ function renderBatch(){
   const panel=document.getElementById('batchPanel');
   panel.classList.toggle('open',selectMode);
   if(!selectMode)return;
-  const buyOpts=schema['購買狀態']?.options||[];
-  const payOpts=schema['付款狀態']?.options||[];
-  const shipOpts=schema['發貨狀態']?.options||[];
+  const buyOpts=getSchemaOptions(schema,'購買狀態');
+  const payOpts=getSchemaOptions(schema,'付款狀態');
+  const shipOpts=getSchemaOptions(schema,'發貨狀態');
   const actions=[
     ...buyOpts.map((o,i)=>({i,label:o,field:'buy',val:o,cls:'bo-buy'})),
     ...payOpts.map((o,i)=>({i:buyOpts.length+i,label:o,field:'pay',val:o,cls:'bo-pay'})),

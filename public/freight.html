@@ -136,6 +136,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .d-neg{color:var(--red)}
 .d-big{font-size:24px;font-weight:700}
 </style>
+<script src="/public/shared.js"></script>
 </head>
 <body>
 <div class="lbar" id="lbar"></div>
@@ -222,17 +223,7 @@ let statusFilters={company:'',client:''};
 let selectMode=false,selectedIds=new Set();
 let viewingId=null;
 
-function lbar(p){const b=document.getElementById('lbar');b.style.width=p+'%';if(p>=100)setTimeout(()=>b.style.width='0',400);}
-function toast(m,dur=2500){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);}
-function toastErr(label,e){toast(`❌ ${label}：${e?.message||e||'未知錯誤'}`,4000);}
-
-const CACHE_KEY='freight_cache_v1';
-function saveCache(d){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data:d}));}catch(e){}}
-function loadCache(){try{const r=localStorage.getItem(CACHE_KEY);if(!r)return null;const{ts,data}=JSON.parse(r);if(Date.now()-ts>300000)return null;return data;}catch(e){return null;}}
-
-let savedScroll=0;
-function saveScroll(){savedScroll=window.scrollY;}
-function restoreScroll(){setTimeout(()=>window.scrollTo(0,savedScroll),50);}
+// freight.html 特定函數
 function fmt(n){return n!=null?'$'+Number(n).toLocaleString():'—';}
 
 async function loadSchema(){
