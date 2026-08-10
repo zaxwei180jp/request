@@ -228,6 +228,11 @@ let statusFilters={seal:'',ship:''};
 let selectMode=false,selectedIds=new Set();
 let unlinkedReqs=[],selectedReqIds=new Set(),viewingId=null;
 
+// pack.html 特定的快取邏輯（覆蓋 shared.js）
+const PACK_CACHE_KEY='pack_cache_v1';
+function saveCache(d){try{localStorage.setItem(PACK_CACHE_KEY,JSON.stringify({ts:Date.now(),data:d}));}catch(e){}}
+function loadCache(){try{const r=localStorage.getItem(PACK_CACHE_KEY);if(!r)return null;const{ts,data}=JSON.parse(r);if(Date.now()-ts>300000)return null;return data;}catch(e){return null;}}
+
 async function loadSchema(){
   const SK='schema_pack_v1';
   try{

@@ -223,6 +223,11 @@ let statusFilters={company:'',client:''};
 let selectMode=false,selectedIds=new Set();
 let viewingId=null;
 
+// freight.html 特定的快取邏輯（覆蓋 shared.js）
+const FREIGHT_CACHE_KEY='freight_cache_v1';
+function saveCache(d){try{localStorage.setItem(FREIGHT_CACHE_KEY,JSON.stringify({ts:Date.now(),data:d}));}catch(e){}}
+function loadCache(){try{const r=localStorage.getItem(FREIGHT_CACHE_KEY);if(!r)return null;const{ts,data}=JSON.parse(r);if(Date.now()-ts>300000)return null;return data;}catch(e){return null;}}
+
 // freight.html 特定函數
 function fmt(n){return n!=null?'$'+Number(n).toLocaleString():'—';}
 
