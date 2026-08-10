@@ -309,7 +309,7 @@ function renderList(){
           <div class="card-id">${r.id||'—'}</div>
           ${r.clients?.length?`<div class="card-clients">${r.clients.join(' · ')}</div>`:''}
         </div>
-        <div class="card-badges">${badge(r.seal)}${badge(r.ship)}</div>
+        <div class="card-badges">${badge(r.seal, STATUS_MAP_PACK)}${badge(r.ship, STATUS_MAP_PACK)}</div>
       </div>
       <div class="bricks">
         ${r.box?`<div class="brick"><div class="brick-l">PJ箱號</div><div class="brick-v">${r.box}</div></div>`:''}
@@ -394,8 +394,18 @@ function cycleStatus(id,key){
   const opts=schema[key]?.options||[];
   const cur=btn.dataset.val||'';
   const next=opts[(opts.indexOf(cur)+1)%opts.length]||opts[0]||'';
-  btn.dataset.val=next;btn.textContent=next;btn.className='sbtn '+scls(next);
+  btn.dataset.val=next;btn.textContent=next;btn.className='sbtn '+scls(next, STATUS_MAP_PACK);
 }
+
+// 事件委派：處理詳情頁面按鈕點擊
+document.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-field][data-label]');
+  if (btn && document.getElementById('dId')) {
+    const field = btn.dataset.field;
+    const label = btn.dataset.label;
+    if (field && label) cycleStatus(btn.id || '', label);
+  }
+});
 function openDetail(pageId){
   const r=records.find(x=>x._pageId===pageId);
   if(!r){toast('找不到資料');return;}
@@ -414,8 +424,8 @@ function openDetail(pageId){
     <div class="dc">
       <div class="dch">狀態</div>
       <div class="dgrid">
-        <div class="df"><div class="df-l">封箱狀態</div><button class="sbtn ${scls(r.seal)}" id="d_seal" data-val="${r.seal||''}" onclick="cycleStatus('d_seal','封箱狀態')">${r.seal||'—'}</button></div>
-        <div class="df" style="border-bottom:none"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship)}" id="d_ship" data-val="${r.ship||''}" onclick="cycleStatus('d_ship','發貨狀態')">${r.ship||'—'}</button></div>
+        <div class="df"><div class="df-l">封箱狀態</div><button class="sbtn ${scls(r.seal, STATUS_MAP_PACK)}" id="d_seal" data-val="${r.seal||''}" data-field="seal" data-label="封箱狀態">${r.seal||'—'}</button></div>
+        <div class="df" style="border-bottom:none"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship, STATUS_MAP_PACK)}" id="d_ship" data-val="${r.ship||''}" data-field="ship" data-label="發貨狀態">${r.ship||'—'}</button></div>
       </div>
     </div>
     ${r.reqs?.length?`<div class="dc"><div class="dch">需求單（${r.reqs.length} 筆）</div><div class="reqs-wrap">${r.reqs.map(re=>`<span class="req-tag">${re}</span>`).join('')}</div></div>`:''}
