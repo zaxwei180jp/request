@@ -228,6 +228,7 @@ export default async function handler(req) {
           pay:        g('ZFWL') || '',
           ship:       g('ko~P') || '',
           buy:        g('lA%3A_') || '',
+          estWeight:  g('%5ECer') || 0,
           pack:       packIds_.map(r => packTitles[r.id]?.label || '').filter(Boolean).join(', '),
           _packIds:   packIds_.map(r => r.id),
         };
@@ -556,10 +557,12 @@ export default async function handler(req) {
         const titleP = Object.values(props).find(v => v.type === 'title');  // tname
         const priceP = Object.values(props).find(v => v.id === 'tQPF');     // jprice
         const idP    = Object.values(props).find(v => v.id === 'gFkD');     // idnumber
+        const weightP = Object.values(props).find(v => v.id === 'goDF');
         return {
-          code:  idP?.rich_text?.[0]?.plain_text || '',
-          name:  titleP?.title?.[0]?.plain_text || '',
-          price: priceP?.number ?? 0,
+          code:   idP?.rich_text?.[0]?.plain_text || '',
+          name:   titleP?.title?.[0]?.plain_text || '',
+          price:  priceP?.number ?? 0,
+          weight: weightP?.number ?? 0,
         };
       }).filter(r => r.code);
       return json(results);
@@ -593,16 +596,6 @@ export default async function handler(req) {
       return json({ total: results.length, maxId: `RE${max}`, idCount: nums.length, missing });
     }
 
-    if (action === 'req_debug') {
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
-      const props = data.results[0].properties;
-      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
-    }
-
     return json({ error: 'Unknown action' }, 400);
 
   } catch (e) {
@@ -629,5 +622,6 @@ function reqToProps(r) {
   if (r.pay)                   p['ZFWL']     = { status:     { name: r.pay  } };
   if (r.ship)                  p['ko~P']     = { status:     { name: r.ship } };
   if (r.buy)                   p['lA:_']     = { status:     { name: r.buy  } };
+  if (r.estWeight !== undefined) p['%5ECer']  = { number: Number(r.estWeight) || 0 };
   return p;
 }
