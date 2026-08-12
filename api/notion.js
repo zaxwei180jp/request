@@ -596,6 +596,67 @@ export default async function handler(req) {
       return json({ total: results.length, maxId: `RE${max}`, idCount: nums.length, missing });
     }
 
+    // ── BATCH FILL EST WEIGHT ───────────────────────────────────
+    if (action === 'batch_fill_weight') {
+      // 1. Get all req pages missing estWeight
+      const results = await queryAll(DB_REQ);
+      const needsFill = results.filter(page => {
+        const props = page.properties || {};
+        const weightP = Object.values(props).find(v => v.id === '%5ECer');
+        const codeP   = Object.values(props).find(v => v.id === '%60AG%5B');
+        const hasWeight = weightP?.number > 0;
+        const hasCode   = codeP?.rich_text?.[0]?.plain_text;
+        return hasCode && !hasWeight;
+      });
+
+      if (!needsFill.length) return json({ ok: true, updated: 0, message: '沒有需要補齊的資料' });
+
+      // 2. Get unique codes
+      const codeMap = {}; // code -> { weight }
+      const codes = [...new Set(needsFill.map(page => {
+        const codeP = Object.values(page.properties).find(v => v.id === '%60AG%5B');
+        return codeP?.rich_text?.[0]?.plain_text || '';
+      }).filter(Boolean))];
+
+      // 3. Query product DB for each code
+      await Promise.all(codes.map(async code => {
+        try {
+          const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
+            method: 'POST', headers: nHeaders(),
+            body: JSON.stringify({ page_size: 1, filter: { property: 'idnumber', rich_text: { equals: code } } }),
+          });
+          const data = await res.json();
+          const page = data.results?.[0];
+          if (page) {
+            const weightP = Object.values(page.properties).find(v => v.id === 'goDF');
+            codeMap[code] = weightP?.number ?? 0;
+          }
+        } catch(e) { codeMap[code] = 0; }
+      }));
+
+      // 4. Update each req page
+      let updated = 0, skipped = 0;
+      await Promise.all(needsFill.map(async page => {
+        const props = page.properties || {};
+        const codeP  = Object.values(props).find(v => v.id === '%60AG%5B');
+        const qtyP   = Object.values(props).find(v => v.id === 'Poce');
+        const code   = codeP?.rich_text?.[0]?.plain_text || '';
+        const qty    = qtyP?.number ?? 1;
+        const unitW  = codeMap[code] ?? 0;
+        if (!unitW) { skipped++; return; }
+        const estWeight = unitW * qty;
+        try {
+          await nFetch(`https://api.notion.com/v1/pages/${page.id}`, {
+            method: 'PATCH', headers: nHeaders(),
+            body: JSON.stringify({ properties: { '%5ECer': { number: estWeight } } }),
+          });
+          updated++;
+        } catch(e) { skipped++; }
+      }));
+
+      return json({ ok: true, updated, skipped, total: needsFill.length });
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (e) {
