@@ -268,10 +268,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="sec">金額 & 數量</div>
       <div class="r2">
-        <div class="fld"><label>數量</label><input id="a_qty" type="number" min="1" placeholder="1" oninput="autoQuote()"></div>
+        <div class="fld"><label>數量</label><input id="a_qty" type="number" min="1" placeholder="1" oninput="autoQuote();autoWeight()"></div>
         <div class="fld"><label>¥ 單價</label><input id="a_price" type="number" placeholder="0" oninput="autoQuote()"></div>
       </div>
       <div class="fld"><label>報價</label><input id="a_quote" type="number" placeholder="選填"></div>
+      <div class="fld"><label>預估重量 (KG)</label><input id="a_estWeight" type="number" step="0.01" placeholder="自動帶入"></div>
       <div class="sec">狀態</div>
       <div class="r2">
         <div class="fld"><label>購買狀態</label><select id="a_buy"><option value="">— 選擇 —</option></select></div>
@@ -582,6 +583,7 @@ async function openAdd(){
   document.getElementById('a_id').value=nextId();
   ['a_client','a_code','a_name','a_quote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('a_qty').value='1';
+  _unitWeight=0;
   document.getElementById('a_price').value='';
   document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
   document.getElementById('a_done').value='';
@@ -611,7 +613,7 @@ function setSelVal(id, val){
   if(opt) el.value=val;
 }
 
-let _prodTimer=null;
+let _prodTimer=null, _unitWeight=0;
 async function searchProduct(code){
   clearTimeout(_prodTimer);
   const suggest=document.getElementById('prodSuggest');
@@ -641,8 +643,10 @@ function applyProduct(i){
   document.getElementById('a_code').value=p.code;
   document.getElementById('a_name').value=p.name;
   document.getElementById('a_price').value=p.price||'';
+  _unitWeight=p.weight||0;
   suggest.classList.remove('show');
   autoQuote();
+  autoWeight();
 }
 function closeAdd(){document.getElementById('addOv').classList.remove('open');}
 async function saveNew(){
@@ -663,6 +667,7 @@ async function saveNew(){
     buy:document.getElementById('a_buy').value,
     pay:document.getElementById('a_pay').value,
     ship:document.getElementById('a_ship').value,
+    estWeight:document.getElementById('a_estWeight').value||0,
     done:document.getElementById('a_done').value,
   };
   try{
@@ -723,7 +728,8 @@ function openDetail(pageId){
         <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}"></div>
         <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}"></div>
         <div class="df"><div class="df-l">報價</div><input class="di" id="d_quote" type="number" value="${r.quote||0}"></div>
-        <div class="df" style="border-bottom:none"><div class="df-l">總價</div><span class="d-big">¥${total}</span></div>
+        <div class="df"><div class="df-l">總價</div><span class="d-big">¥${total}</span></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">預估重量 (KG)</div><input class="di" id="d_estWeight" type="number" step="0.01" value="${r.estWeight||0}"></div>
       </div>
     </div>
     <div class="dc">
@@ -790,6 +796,7 @@ async function saveDetail(){
     pay:document.getElementById('d_pay').dataset.val||'',
     ship:document.getElementById('d_ship').dataset.val||'',
     submit:document.getElementById('d_submit').value,
+    estWeight:document.getElementById('d_estWeight').value||0,
     done:document.getElementById('d_done').value,
   };
   try{
@@ -812,6 +819,11 @@ function autoQuote(){
   const qty=Number(document.getElementById('a_qty').value)||0;
   const price=Number(document.getElementById('a_price').value)||0;
   if(qty>0&&price>0) document.getElementById('a_quote').value=qty*price;
+}
+function autoWeight(){
+  if(!_unitWeight) return;
+  const qty=Number(document.getElementById('a_qty').value)||1;
+  document.getElementById('a_estWeight').value=(_unitWeight*qty).toFixed(2);
 }
 
 document.addEventListener('click', e=>{
