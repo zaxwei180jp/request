@@ -282,13 +282,15 @@ export default async function handler(req) {
         const titleP  = Object.values(props).find(v => v.type === 'title');
         const nameP   = Object.values(props).find(v => v.id === 'Tcrm');
         const clientP = Object.values(props).find(v => v.id === 'A%3A%3Ei');
-        const shipP   = Object.values(props).find(v => v.id === 'ko~P');
+        const shipP    = Object.values(props).find(v => v.id === 'ko~P');
+        const weightP  = Object.values(props).find(v => v.id === '%5ECer');
         return {
-          id:     page.id,
-          label:  titleP?.title?.[0]?.plain_text || page.id.slice(0,8),
-          name:   nameP?.rich_text?.[0]?.plain_text || '',
-          client: clientP?.rich_text?.[0]?.plain_text || '',
-          ship:   shipP?.status?.name || '',
+          id:        page.id,
+          label:     titleP?.title?.[0]?.plain_text || page.id.slice(0,8),
+          name:      nameP?.rich_text?.[0]?.plain_text || '',
+          client:    clientP?.rich_text?.[0]?.plain_text || '',
+          ship:      shipP?.status?.name || '',
+          estWeight: weightP?.number ?? 0,
         };
       });
       return json(unlinked);
