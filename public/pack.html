@@ -426,6 +426,7 @@ function openDetail(pageId){
         <div class="df"><div class="df-l">重量 KG</div><input class="di" id="d_weight" type="number" value="${r.weight||0}"></div>
         <div class="df"><div class="df-l">預計到貨日期</div><input class="di" id="d_arrive" type="date" value="${r.arrive||''}"></div>
         <div class="df"><div class="df-l">需求單數</div><span style="font-size:16px;font-weight:600">${r.reqCount||0} 筆</span></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">預估重量</div><span style="font-size:20px;font-weight:700;color:var(--purple)">${r.estWeight||0} KG</span></div>
       </div>
     </div>
     <div class="dc">
