@@ -359,14 +359,17 @@ function renderReqList(){
     const mQ=!q||(r.label+r.name+r.client).toLowerCase().includes(q);
     return mQ&&r.ship==='集貨中';
   });
-  document.getElementById('reqSelCount').textContent=selectedReqIds.size?`已選 ${selectedReqIds.size} 筆`:'';
+  const selReqs=unlinkedReqs.filter(r=>selectedReqIds.has(r.id));
+  const totalW=selReqs.reduce((s,r)=>s+(Number(r.estWeight)||0),0);
+  const wTxt=totalW>0?` · 預估 ${totalW.toFixed(2)} KG`:'';
+  document.getElementById('reqSelCount').textContent=selectedReqIds.size?`已選 ${selectedReqIds.size} 筆${wTxt}`:'';
   if(!data.length){document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">沒有集貨中的未關聯需求單</div>';return;}
   document.getElementById('reqList').innerHTML=data.map(r=>`
     <div class="req-item${selectedReqIds.has(r.id)?' checked':''}" onclick="toggleReq('${r.id}')">
       <div class="req-ck">${selectedReqIds.has(r.id)?'✓':''}</div>
       <div>
         <div style="font-size:14px;font-weight:700;color:var(--purple)">${r.label}</div>
-        <div style="font-size:12px;color:var(--muted)">${r.client}${r.name?' · '+r.name.slice(0,24):''}</div>
+        <div style="font-size:12px;color:var(--muted)">${r.client}${r.name?' · '+r.name.slice(0,20):''}${r.estWeight?` · ${r.estWeight}KG`:''}</div>
       </div>
     </div>`).join('');
 }
