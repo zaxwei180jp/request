@@ -323,9 +323,11 @@ export default async function handler(req) {
         const props   = page.properties || {};
         const titleP  = Object.values(props).find(v => v.type === 'title');
         const clientP = Object.values(props).find(v => v.id === 'A%3A%3Ei');
+        const weightP = Object.values(props).find(v => v.id === '%5ECer');
         return {
-          label:  titleP?.title?.[0]?.plain_text || '',
-          client: clientP?.rich_text?.[0]?.plain_text || '',
+          label:     titleP?.title?.[0]?.plain_text || '',
+          client:    clientP?.rich_text?.[0]?.plain_text || '',
+          estWeight: weightP?.number ?? 0,
         };
       });
 
@@ -333,8 +335,9 @@ export default async function handler(req) {
         const p   = page.properties || {};
         const g   = id => val(prop(p, id));
         const rel = prop(p, 'z%7D_K')?.relation || [];
-        const reqs    = rel.map(r => reqInfo[r.id]?.label || '').filter(Boolean);
-        const clients = [...new Set(rel.map(r => reqInfo[r.id]?.client || '').filter(Boolean))];
+        const reqs      = rel.map(r => reqInfo[r.id]?.label || '').filter(Boolean);
+        const clients   = [...new Set(rel.map(r => reqInfo[r.id]?.client || '').filter(Boolean))];
+        const estWeight = rel.reduce((s,r) => s + (reqInfo[r.id]?.estWeight || 0), 0);
         return {
           _pageId:  page.id,
           id:       g('title'),
@@ -346,6 +349,7 @@ export default async function handler(req) {
           note:     g('FuLG'),
           reqs,
           clients,
+          estWeight: Math.round(estWeight * 10) / 10,
           reqCount: rel.length,
         };
       }));
