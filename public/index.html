@@ -776,6 +776,21 @@ async function copyToNew(){
   // Dates
   document.getElementById('a_submit').value=new Date().toISOString().slice(0,10);
   document.getElementById('a_done').value='';
+
+  // Query product DB for unit weight
+  _unitWeight=0;
+  document.getElementById('a_estWeight').value='';
+  if(r.code){
+    try{
+      const res=await fetch(`${API}?action=product_search&code=${encodeURIComponent(r.code)}`);
+      const items=await res.json();
+      const prod=items.find(p=>p.code===r.code)||items[0];
+      if(prod?.weight){
+        _unitWeight=prod.weight;
+        autoWeight();
+      }
+    }catch(e){}
+  }
 }
 
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
