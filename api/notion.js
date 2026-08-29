@@ -96,7 +96,9 @@ function prop(props, id) {
 // Batch fetch pages and return id→data map
 async function batchFetchPages(ids, mapper) {
   const map = {};
-  await Promise.all([...ids].map(async id => {
+  // Validate UUID format before fetching
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  await Promise.all([...ids].filter(id => uuidRe.test(id)).map(async id => {
     try {
       const page = await fetchPage(id);
       map[id] = mapper(page);
