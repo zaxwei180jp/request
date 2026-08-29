@@ -319,36 +319,11 @@ export default async function handler(req) {
     // ── PACK LIST ───────────────────────────────────────────────
     if (action === 'pack_list') {
       const results = await queryAll(DB_PACK);
-
-      // Collect unique req IDs
-      const reqRelIds = collectRelIds(results, 'z%7D_K');
-
-      // Fetch req pages with filter_properties to only get title + client (faster)
-      const reqMap = {};
-      await Promise.all([...reqRelIds].map(async id => {
-        try {
-          const res = await nFetch(
-            `https://api.notion.com/v1/pages/${id}?filter_properties=title&filter_properties=A%3A%3Ei`,
-            { headers: nHeaders() }
-          );
-          const page = await res.json();
-          if (page.object === 'error') return;
-          const props  = page.properties || {};
-          const titleP = Object.values(props).find(v => v.type === 'title');
-          const clientP = Object.values(props).find(v => v.id === 'A%3A%3Ei');
-          reqMap[id] = {
-            label:  titleP?.title?.[0]?.plain_text || '',
-            client: clientP?.rich_text?.[0]?.plain_text || '',
-          };
-        } catch { reqMap[id] = { label: '', client: '' }; }
-      }));
-
       return json(results.map(page => {
         const p   = page.properties || {};
         const g   = id => val(prop(p, id));
         const rel = prop(p, 'z%7D_K')?.relation || [];
-        const reqs    = rel.map(r => reqMap[r.id]?.label || '').filter(Boolean);
-        const clients = [...new Set(rel.map(r => reqMap[r.id]?.client || '').filter(Boolean))];
+        // Return req page IDs - frontend will resolve labels from cached req data
         return {
           _pageId:  page.id,
           id:       g('title'),
@@ -358,8 +333,7 @@ export default async function handler(req) {
           ship:     g('yQKS'),
           arrive:   g('%5B~Wz'),
           note:     g('FuLG'),
-          reqs,
-          clients,
+          reqIds:   rel.map(r => r.id),
           reqCount: rel.length,
         };
       }));
@@ -710,6 +684,28 @@ export default async function handler(req) {
       }));
 
       return json({ ok: true, updated, skipped, total: needsFill.length });
+    }
+
+    // PACK TEST - fetch only 1 record
+    if (action === 'pack_test') {
+      const start = Date.now();
+      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
+        method: 'POST', headers: nHeaders(),
+        body: JSON.stringify({ page_size: 1 }),
+      });
+      const data = await res.json();
+      return json({ ms: Date.now()-start, count: data.results?.length, error: data.message });
+    }
+
+    // PACK TEST 10
+    if (action === 'pack_test10') {
+      const start = Date.now();
+      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
+        method: 'POST', headers: nHeaders(),
+        body: JSON.stringify({ page_size: 10 }),
+      });
+      const data = await res.json();
+      return json({ ms: Date.now()-start, count: data.results?.length, has_more: data.has_more, error: data.message });
     }
 
     return json({ error: 'Unknown action' }, 400);
