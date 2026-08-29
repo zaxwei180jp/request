@@ -319,24 +319,10 @@ export default async function handler(req) {
     // ── PACK LIST ───────────────────────────────────────────────
     if (action === 'pack_list') {
       const results = await queryAll(DB_PACK);
-      const reqRelIds = collectRelIds(results, 'z%7D_K');
-
-      const reqInfo = await batchFetchPages(reqRelIds, page => {
-        const props   = page.properties || {};
-        const titleP  = Object.values(props).find(v => v.type === 'title');
-        const clientP = Object.values(props).find(v => v.id === 'A%3A%3Ei');
-        return {
-          label:  titleP?.title?.[0]?.plain_text || '',
-          client: clientP?.rich_text?.[0]?.plain_text || '',
-        };
-      });
-
       return json(results.map(page => {
         const p   = page.properties || {};
         const g   = id => val(prop(p, id));
         const rel = prop(p, 'z%7D_K')?.relation || [];
-        const reqs    = rel.map(r => reqInfo[r.id]?.label || '').filter(Boolean);
-        const clients = [...new Set(rel.map(r => reqInfo[r.id]?.client || '').filter(Boolean))];
         return {
           _pageId:  page.id,
           id:       g('title'),
@@ -346,8 +332,8 @@ export default async function handler(req) {
           ship:     g('yQKS'),
           arrive:   g('%5B~Wz'),
           note:     g('FuLG'),
-          reqs,
-          clients,
+          reqs:     [],
+          clients:  [],
           reqCount: rel.length,
         };
       }));
