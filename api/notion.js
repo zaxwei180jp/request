@@ -318,7 +318,7 @@ export default async function handler(req) {
 
     // ── PACK LIST ───────────────────────────────────────────────
     if (action === 'pack_list') {
-      const results = await queryAll(DB_PACK);
+      const results = await queryAll(DB_PACK, []);  // no sort to avoid timeout
       return json(results.map(page => {
         const p   = page.properties || {};
         const g   = id => val(prop(p, id));
