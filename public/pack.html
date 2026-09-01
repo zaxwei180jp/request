@@ -242,13 +242,39 @@ async function loadSchema(){
     if(!d.error){schema=d;localStorage.setItem(SK,JSON.stringify(d));}
   }catch(e){}
 }
+function resolveReqLabels(){
+  // Use cached req data to resolve req IDs to labels/clients
+  try{
+    const raw=localStorage.getItem('req_cache_v1');
+    if(!raw) return;
+    const {data:reqs}=JSON.parse(raw);
+    if(!reqs?.length) return;
+    const reqMap={};
+    reqs.forEach(r=>{ if(r._pageId) reqMap[r._pageId]={label:r.id,client:r.client||''}; });
+    records=records.map(r=>{
+      const ids=r.reqIds||[];
+      const labels=ids.map(id=>reqMap[id]?.label||'').filter(Boolean);
+      const clients=[...new Set(ids.map(id=>reqMap[id]?.client||'').filter(Boolean))];
+      return {...r, reqs:labels, clients};
+    });
+  }catch(e){}
+}
+
 async function loadRecords(silent=false){
   if(!silent) lbar(30);
   try{
     const r=await fetch(API+'?action=pack_list');
     if(!silent) lbar(80);
     const d=await r.json();if(d.error)throw new Error(d.error);
-    records=d;saveCache(d);
+    // Sort by pack ID descending (e.g. PACK035 > PACK034)
+    d.sort((a,b)=>{
+      const na=parseInt((a.id||'').replace(/\D/g,''))||0;
+      const nb=parseInt((b.id||'').replace(/\D/g,''))||0;
+      return nb-na;
+    });
+    records=d;
+    resolveReqLabels();
+    saveCache(records);
     if(!silent) lbar(100);
     const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
@@ -446,6 +472,7 @@ function openDetail(pageId){
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
+  const r=records.find(x=>x._pageId===viewingId);
   const body={
     box:document.getElementById('d_box').value.trim(),
     weight:document.getElementById('d_weight').value||0,
@@ -453,6 +480,7 @@ async function saveDetail(){
     seal:document.getElementById('d_seal').dataset.val||'',
     ship:document.getElementById('d_ship').dataset.val||'',
     note:document.getElementById('d_note').value.trim(),
+    reqIds:r?.reqIds||[],
   };
   try{
     const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
