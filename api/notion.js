@@ -394,6 +394,17 @@ export default async function handler(req) {
       });
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message }, 500);
+
+      // 發貨狀態改成「完成」時，把關聯的需求單發貨狀態也改成「完成」
+      if (body.ship === '完成' && body.reqIds?.length) {
+        await Promise.all(body.reqIds.map(reqId =>
+          nFetch(`https://api.notion.com/v1/pages/${reqId}`, {
+            method: 'PATCH', headers: nHeaders(),
+            body: JSON.stringify({ properties: { 'ko~P': { status: { name: '完成' } } } }),
+          })
+        ));
+      }
+
       return json({ ok: true });
     }
 
