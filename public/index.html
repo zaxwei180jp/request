@@ -401,17 +401,15 @@ function renderChips(){
     ...shipOpts.map(o=>({k:'ship',v:o,l:`發貨:${o}`})),
   ];
   document.getElementById('chips').innerHTML=all.map(c=>`<span class="chip${statusFilters[c.k]===c.v?' on':''}" data-k="${c.k}" data-v="${c.v}">${c.l}</span>`).join('');
-  // 事件委派
+}
+// 事件委派只綁定一次
+document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('chips').addEventListener('click', e => {
     const span = e.target.closest('.chip');
-    if (span) {
-      const k = span.dataset.k;
-      const v = span.dataset.v;
-      if (k && v) toggleChip(k, v);
-    }
+    if (span) toggleChip(span.dataset.k, span.dataset.v);
   });
-}
-function toggleChip(k,v){statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
+});
+function toggleChip(k,v){if(!k||!v)return;statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
 
 function renderStats(){
   const base=baseFiltered();
