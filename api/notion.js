@@ -719,6 +719,16 @@ export default async function handler(req) {
       return json({ ms: Date.now()-start, count: data.results?.length, has_more: data.has_more, error: data.message });
     }
 
+    if (action === 'req_debug') {
+      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
+        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
+      });
+      const data = await res.json();
+      if (!data.results?.length) return json({ error: 'No results' }, 500);
+      const props = data.results[0].properties;
+      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
+    }
+
     return json({ error: 'Unknown action' }, 400);
 
   } catch (e) {
