@@ -231,6 +231,7 @@ export default async function handler(req) {
           ship:       g('ko~P') || '',
           buy:        g('lA%3A_') || '',
           estWeight:  g('%5ECer') || 0,
+          twQuote:    g('X%3E%7BZ') || 0,
           pack:       packIds_.map(r => packTitles[r.id]?.label || '').filter(Boolean).join(', '),
           _packIds:   packIds_.map(r => r.id),
         };
@@ -719,16 +720,6 @@ export default async function handler(req) {
       return json({ ms: Date.now()-start, count: data.results?.length, has_more: data.has_more, error: data.message });
     }
 
-    if (action === 'req_debug') {
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      if (!data.results?.length) return json({ error: 'No results' }, 500);
-      const props = data.results[0].properties;
-      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
-    }
-
     return json({ error: 'Unknown action' }, 400);
 
   } catch (e) {
@@ -756,5 +747,6 @@ function reqToProps(r) {
   if (r.ship)                  p['ko~P']     = { status:     { name: r.ship } };
   if (r.buy)                   p['lA:_']     = { status:     { name: r.buy  } };
   if (r.estWeight !== undefined) p['%5ECer']  = { number: Number(r.estWeight) || 0 };
+  if (r.twQuote  !== undefined) p['X%3E%7BZ'] = { number: Number(r.twQuote)   || 0 };
   return p;
 }
