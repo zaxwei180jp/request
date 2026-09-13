@@ -725,8 +725,9 @@ function openDetail(pageId){
       <div class="dgrid">
         <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}"></div>
         <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}"></div>
-        <div class="df"><div class="df-l">報價</div><input class="di" id="d_quote" type="number" value="${r.quote||0}"></div>
-        <div class="df"><div class="df-l">總價</div><span class="d-big">¥${total}</span></div>
+        <div class="df"><div class="df-l">報價 ¥</div><input class="di" id="d_quote" type="number" value="${r.quote||0}"></div>
+        <div class="df"><div class="df-l">報價台幣 $</div><input class="di" id="d_twquote" type="number" value="${r.twQuote||0}"></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">總價</div><span class="d-big">¥${total}</span></div>
         <div class="df full" style="border-bottom:none"><div class="df-l">預估重量 (KG)</div><input class="di" id="d_estWeight" type="number" step="0.01" value="${r.estWeight||0}"></div>
       </div>
     </div>
@@ -809,6 +810,7 @@ async function saveDetail(){
     pay:document.getElementById('d_pay').dataset.val||'',
     ship:document.getElementById('d_ship').dataset.val||'',
     submit:document.getElementById('d_submit').value,
+    twQuote:document.getElementById('d_twquote').value||0,
     estWeight:document.getElementById('d_estWeight').value||0,
     done:document.getElementById('d_done').value,
   };
