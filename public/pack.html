@@ -632,11 +632,20 @@ function renderCurrentReqs(r){
 function removeReq(id, label){
   if(id){
     editReqsRemovedIds.add(id);
-    // Cache removed req info for re-display in list
-    const r = records.find(x=>x._pageId===viewingId);
-    const idx = r?.reqIds?.indexOf(id);
-    if(idx > -1 && !editRemovedReqCache.find(x=>x.id===id)){
-      editRemovedReqCache.push({id, label:r.reqs[idx]||label, name:'', client:'', ship:'已出貨'});
+    // Cache removed req info from localStorage req cache
+    if(!editRemovedReqCache.find(x=>x.id===id)){
+      let name='', client='';
+      try{
+        const raw=localStorage.getItem('req_cache_v1');
+        if(raw){
+          const {data:reqs}=JSON.parse(raw);
+          const found=reqs?.find(r=>r._pageId===id);
+          if(found){ name=found.name||''; client=found.client||''; }
+        }
+      }catch(e){}
+      const packRec = records.find(x=>x._pageId===viewingId);
+      const idx = packRec?.reqIds?.indexOf(id);
+      editRemovedReqCache.push({id, label:packRec?.reqs[idx]||label, name, client, ship:'已出貨'});
     }
   }
   // Also remove from addedIds if it was just added
