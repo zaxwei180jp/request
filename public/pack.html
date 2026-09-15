@@ -591,6 +591,7 @@ async function batchUpdate(i){
 let editReqsRemovedIds = new Set(); // IDs to remove
 let editReqsAddedIds = new Set();   // IDs to add
 let editUnlinkedReqs = [];
+let editRemovedReqCache = []; // cache of removed reqs for re-display
 
 async function openEditReqs(){
   const r = records.find(x=>x._pageId===viewingId);
@@ -598,6 +599,7 @@ async function openEditReqs(){
 
   editReqsRemovedIds.clear();
   editReqsAddedIds.clear();
+  editRemovedReqCache = [];
   document.getElementById('editReqSrch').value='';
 
   // Show current reqs
@@ -628,7 +630,17 @@ function renderCurrentReqs(r){
 }
 
 function removeReq(id, label){
-  if(id) editReqsRemovedIds.add(id);
+  if(id){
+    editReqsRemovedIds.add(id);
+    // Cache removed req info for re-display in list
+    const r = records.find(x=>x._pageId===viewingId);
+    const idx = r?.reqIds?.indexOf(id);
+    if(idx > -1 && !editRemovedReqCache.find(x=>x.id===id)){
+      editRemovedReqCache.push({id, label:r.reqs[idx]||label, name:'', client:'', ship:'已出貨'});
+    }
+  }
+  // Also remove from addedIds if it was just added
+  editReqsAddedIds.delete(id);
   // Remove from display
   const r = records.find(x=>x._pageId===viewingId);
   if(r){
@@ -641,15 +653,20 @@ function removeReq(id, label){
     renderCurrentReqs(r);
     document.getElementById('editReqCount').textContent=`${r.reqs.length} 筆`;
   }
+  // Re-render list so removed req appears again
+  renderEditReqList();
 }
 
 function renderEditReqList(){
   const q = document.getElementById('editReqSrch').value.toLowerCase();
   const r = records.find(x=>x._pageId===viewingId);
   const currentIds = new Set(r?.reqIds||[]);
-  const data = editUnlinkedReqs.filter(req=>{
+  // Include removed reqs (they should be available again)
+  const removedReqs = editRemovedReqCache.filter(req => editReqsRemovedIds.has(req.id));
+  const allAvailable = [...editUnlinkedReqs, ...removedReqs];
+  const data = allAvailable.filter(req=>{
     const mQ = !q||(req.label+req.name+req.client).toLowerCase().includes(q);
-    return mQ && req.ship==='集貨中' && !currentIds.has(req.id);
+    return mQ && !currentIds.has(req.id);
   });
   document.getElementById('editSelCount').textContent = editReqsAddedIds.size?`已選 ${editReqsAddedIds.size} 筆`:'';
   if(!data.length){ document.getElementById('editReqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">沒有可新增的需求單</div>'; return; }
