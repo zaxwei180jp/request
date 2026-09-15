@@ -592,6 +592,7 @@ let editReqsRemovedIds = new Set(); // IDs to remove
 let editReqsAddedIds = new Set();   // IDs to add
 let editUnlinkedReqs = [];
 let editRemovedReqCache = []; // cache of removed reqs for re-display
+let editOriginalReqIds = []; // snapshot of reqIds when edit opened
 
 async function openEditReqs(){
   const r = records.find(x=>x._pageId===viewingId);
@@ -600,6 +601,7 @@ async function openEditReqs(){
   editReqsRemovedIds.clear();
   editReqsAddedIds.clear();
   editRemovedReqCache = [];
+  editOriginalReqIds = [...(r.reqIds||[])]; // snapshot before any edits
   document.getElementById('editReqSrch').value='';
 
   // Show current reqs
@@ -706,8 +708,8 @@ async function saveEditReqs(){
   const btn=document.getElementById('btnSaveReqs');
   btn.disabled=true; btn.textContent='儲存中…';
   try{
-    const r = records.find(x=>x._pageId===viewingId);
-    const currentIds = new Set(r?.reqIds||[]);
+    // Use original snapshot (before live edits) as base
+    const currentIds = new Set(editOriginalReqIds);
 
     // Remove IDs
     editReqsRemovedIds.forEach(id => currentIds.delete(id));
