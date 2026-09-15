@@ -333,9 +333,10 @@ export default async function handler(req) {
           seal:     g('m%7CyI'),
           ship:     g('yQKS'),
           arrive:   g('%5B~Wz'),
-          note:     g('FuLG'),
-          reqIds:   rel.map(r => r.id),
-          reqCount: rel.length,
+          note:      g('FuLG'),
+          shipDate:  g('tH%5C%5D'),
+          reqIds:    rel.map(r => r.id),
+          reqCount:  rel.length,
         };
       }));
     }
@@ -389,7 +390,8 @@ export default async function handler(req) {
       if (body.seal)                 props['m|yI']     = { status: { name: body.seal } };
       if (body.ship)                 props['yQKS']     = { status: { name: body.ship } };
       if (body.arrive)               props['[~Wz']     = { date: { start: body.arrive } };
-      if (body.note   !== undefined) props['FuLG']     = { rich_text: [{ text: { content: body.note || '' } }] };
+      if (body.note     !== undefined) props['FuLG']      = { rich_text: [{ text: { content: body.note || '' } }] };
+      if (body.shipDate)               props['tH%5C%5D'] = { date: { start: body.shipDate } };
       const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
         method: 'PATCH', headers: nHeaders(), body: JSON.stringify({ properties: props }),
       });
@@ -419,7 +421,8 @@ export default async function handler(req) {
       if (body.seal)            props['m|yI']   = { status: { name: body.seal } };
       if (body.ship)            props['yQKS']   = { status: { name: body.ship } };
       if (body.arrive)          props['[~Wz']   = { date: { start: body.arrive } };
-      if (body.note)            props['FuLG']   = { rich_text: [{ text: { content: body.note } }] };
+      if (body.note)             props['FuLG']      = { rich_text: [{ text: { content: body.note } }] };
+      if (body.shipDate)         props['tH%5C%5D'] = { date: { start: body.shipDate } };
       if (body.reqPageIds?.length) props['z}_K'] = { relation: body.reqPageIds.map(id => ({ id })) };
       const res = await fetch('https://api.notion.com/v1/pages', {
         method: 'POST', headers: nHeaders(),
@@ -718,16 +721,6 @@ export default async function handler(req) {
       });
       const data = await res.json();
       return json({ ms: Date.now()-start, count: data.results?.length, has_more: data.has_more, error: data.message });
-    }
-
-    if (action === 'pack_debug') {
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      if (!data.results?.length) return json({ error: 'No results' }, 500);
-      const props = data.results[0].properties;
-      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
     }
 
     return json({ error: 'Unknown action' }, 400);
