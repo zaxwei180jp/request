@@ -445,6 +445,46 @@ export default async function handler(req) {
       return json({ ok: true, id: packPage.id });
     }
 
+    // ── PACK UPDATE REQS ─────────────────────────────────────────
+    if (action === 'pack_update_reqs') {
+      const pageId = url.searchParams.get('id');
+      const body = await req.json();
+      const { reqIds, addedIds, removedIds, packId } = body;
+
+      // Update pack's relation
+      await nFetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: 'PATCH', headers: nHeaders(),
+        body: JSON.stringify({ properties: { 'z}_K': { relation: reqIds.map(id=>({id})) } } }),
+      });
+
+      // Update added reqs: set their pack relation to this pack
+      if (addedIds?.length) {
+        await Promise.all(addedIds.map(reqId =>
+          nFetch(`https://api.notion.com/v1/pages/${reqId}`, {
+            method: 'PATCH', headers: nHeaders(),
+            body: JSON.stringify({ properties: {
+              'R_%3D%3A': { relation: [{ id: packId }] },
+              'ko~P': { status: { name: '已出貨' } },
+            }}),
+          })
+        ));
+      }
+
+      // Update removed reqs: clear their pack relation
+      if (removedIds?.length) {
+        await Promise.all(removedIds.map(reqId =>
+          nFetch(`https://api.notion.com/v1/pages/${reqId}`, {
+            method: 'PATCH', headers: nHeaders(),
+            body: JSON.stringify({ properties: {
+              'R_%3D%3A': { relation: [] },
+            }}),
+          })
+        ));
+      }
+
+      return json({ ok: true });
+    }
+
     // ── UNLINKED PACKS (for freight create) ─────────────────────
     if (action === 'unlinked_packs') {
       const [packs, freightResults] = await Promise.all([
