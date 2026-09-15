@@ -85,6 +85,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,.95);backdrop-filter:blur(10px);color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 .lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
+.edit-reqs-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;align-items:flex-end}
+.edit-reqs-ov.open{display:flex}
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end}
 .ov.open{display:flex}
 .sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .3s ease}
@@ -179,6 +181,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="stats" id="statsBar"></div>
 <div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
+
+<!-- EDIT REQS -->
+<div class="edit-reqs-ov" id="editReqsOv">
+  <div class="sheet">
+    <div class="sh-bar"></div>
+    <div class="sh-hdr">
+      <span class="sh-title">編輯關聯需求單</span>
+      <button class="btn-x" onclick="closeEditReqs()">✕</button>
+    </div>
+    <div class="fbody">
+      <div class="sec">目前已關聯 <span id="editReqCount" style="color:var(--purple);font-weight:700"></span></div>
+      <div id="editCurrentReqs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+      <div class="sec">新增需求單（集貨中）<span id="editSelCount" style="color:var(--purple);font-weight:700;margin-left:8px"></span></div>
+      <input class="req-srch" id="editReqSrch" placeholder="搜尋需求單號或商品名稱…" oninput="renderEditReqList()">
+      <div class="req-list" id="editReqList"><div style="text-align:center;color:var(--hint);padding:20px">載入中…</div></div>
+      <div class="factions">
+        <button class="btn-cf" onclick="closeEditReqs()">取消</button>
+        <button class="btn-sv" id="btnSaveReqs" onclick="saveEditReqs()">儲存關聯</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ADD -->
 <div class="ov" id="addOv">
@@ -472,7 +496,15 @@ function openDetail(pageId){
         <div class="df" style="border-bottom:none"><div class="df-l">發貨狀態</div><button class="sbtn ${scls(r.ship, STATUS_MAP_PACK)}" id="d_ship" data-val="${r.ship||''}" data-field="ship" data-label="發貨狀態">${r.ship||'—'}</button></div>
       </div>
     </div>
-    ${r.reqs?.length?`<div class="dc"><div class="dch">需求單（${r.reqs.length} 筆）</div><div class="reqs-wrap">${r.reqs.map(re=>`<span class="req-tag">${re}</span>`).join('')}</div></div>`:''}
+    <div class="dc">
+      <div class="dch" style="display:flex;justify-content:space-between;align-items:center">
+        <span>需求單（${(r.reqs||[]).length} 筆）</span>
+        <button onclick="openEditReqs()" style="background:var(--purple);color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">編輯</button>
+      </div>
+      <div class="reqs-wrap" id="d_reqs_display">
+        ${(r.reqs||[]).length ? r.reqs.map(re=>`<span class="req-tag">${re}</span>`).join('') : '<span style="color:var(--hint);font-size:13px;padding:4px">尚未關聯需求單</span>'}
+      </div>
+    </div>
     <div class="dc">
       <div class="dch">備註</div>
       <div class="dgrid"><div class="df full" style="border-bottom:none"><textarea class="di" id="d_note" rows="3" style="height:80px">${r.note||''}</textarea></div></div>
@@ -553,6 +585,124 @@ async function batchUpdate(i){
   }));
   toast(fail>0?`✅ ${ok} 筆成功 ❌ ${fail} 筆失敗`:`✅ ${ok} 筆已更新`);
   selectedIds.clear();await loadAll(true);
+}
+
+// Edit Reqs
+let editReqsRemovedIds = new Set(); // IDs to remove
+let editReqsAddedIds = new Set();   // IDs to add
+let editUnlinkedReqs = [];
+
+async function openEditReqs(){
+  const r = records.find(x=>x._pageId===viewingId);
+  if(!r) return;
+
+  editReqsRemovedIds.clear();
+  editReqsAddedIds.clear();
+  document.getElementById('editReqSrch').value='';
+
+  // Show current reqs
+  renderCurrentReqs(r);
+
+  document.getElementById('editReqsOv').classList.add('open');
+
+  // Load unlinked reqs
+  document.getElementById('editReqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">載入中…</div>';
+  try{
+    const res = await fetch(API+'?action=unlinked_reqs');
+    editUnlinkedReqs = await res.json();
+    renderEditReqList();
+  }catch(e){ document.getElementById('editReqList').innerHTML='<div style="color:var(--muted);padding:16px">載入失敗</div>'; }
+}
+
+function renderCurrentReqs(r){
+  const reqs = r.reqs||[];
+  const reqIds = r.reqIds||[];
+  document.getElementById('editReqCount').textContent = `${reqs.length} 筆`;
+  document.getElementById('editCurrentReqs').innerHTML = reqs.length
+    ? reqs.map((label,i)=>`
+        <span style="background:var(--pl);color:var(--purple);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px">
+          ${label}
+          <button onclick="removeReq('${reqIds[i]||''}','${label}')" style="background:none;border:none;cursor:pointer;color:var(--purple);font-size:14px;font-weight:700;padding:0;line-height:1">✕</button>
+        </span>`).join('')
+    : '<span style="color:var(--hint);font-size:13px">尚未關聯需求單</span>';
+}
+
+function removeReq(id, label){
+  if(id) editReqsRemovedIds.add(id);
+  // Remove from display
+  const r = records.find(x=>x._pageId===viewingId);
+  if(r){
+    const idx = r.reqIds?.indexOf(id);
+    if(idx > -1){
+      r.reqs = r.reqs.filter((_,i)=>i!==idx);
+      r.reqIds = r.reqIds.filter((_,i)=>i!==idx);
+      r.reqCount = r.reqIds.length;
+    }
+    renderCurrentReqs(r);
+    document.getElementById('editReqCount').textContent=`${r.reqs.length} 筆`;
+  }
+}
+
+function renderEditReqList(){
+  const q = document.getElementById('editReqSrch').value.toLowerCase();
+  const r = records.find(x=>x._pageId===viewingId);
+  const currentIds = new Set(r?.reqIds||[]);
+  const data = editUnlinkedReqs.filter(req=>{
+    const mQ = !q||(req.label+req.name+req.client).toLowerCase().includes(q);
+    return mQ && req.ship==='集貨中' && !currentIds.has(req.id);
+  });
+  document.getElementById('editSelCount').textContent = editReqsAddedIds.size?`已選 ${editReqsAddedIds.size} 筆`:'';
+  if(!data.length){ document.getElementById('editReqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">沒有可新增的需求單</div>'; return; }
+  document.getElementById('editReqList').innerHTML = data.map(req=>`
+    <div class="req-item${editReqsAddedIds.has(req.id)?' checked':''}" onclick="toggleEditReq('${req.id}')">
+      <div class="req-ck">${editReqsAddedIds.has(req.id)?'✓':''}</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--purple)">${req.label}</div>
+        <div style="font-size:12px;color:var(--muted)">${req.client}${req.name?' · '+req.name.slice(0,20):''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleEditReq(id){
+  if(editReqsAddedIds.has(id)) editReqsAddedIds.delete(id);
+  else editReqsAddedIds.add(id);
+  renderEditReqList();
+  document.getElementById('editSelCount').textContent = editReqsAddedIds.size?`已選 ${editReqsAddedIds.size} 筆`:'';
+}
+
+function closeEditReqs(){ document.getElementById('editReqsOv').classList.remove('open'); }
+
+async function saveEditReqs(){
+  const btn=document.getElementById('btnSaveReqs');
+  btn.disabled=true; btn.textContent='儲存中…';
+  try{
+    const r = records.find(x=>x._pageId===viewingId);
+    const currentIds = new Set(r?.reqIds||[]);
+
+    // Remove IDs
+    editReqsRemovedIds.forEach(id => currentIds.delete(id));
+    // Add IDs
+    editReqsAddedIds.forEach(id => currentIds.add(id));
+
+    const newReqIds = [...currentIds];
+
+    const res = await fetch(`${API}?action=pack_update_reqs&id=${viewingId}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        reqIds: newReqIds,
+        addedIds: [...editReqsAddedIds],
+        removedIds: [...editReqsRemovedIds],
+        packId: viewingId,
+      })
+    });
+    const d = await res.json();
+    if(d.error) throw new Error(d.error);
+    toast('✅ 已更新關聯需求單');
+    closeEditReqs();
+    await loadAll(true);
+    openDetail(viewingId);
+  }catch(e){ toastErr('儲存失敗',e); }
+  btn.disabled=false; btn.textContent='儲存關聯';
 }
 
 loadAll();
