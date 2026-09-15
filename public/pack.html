@@ -193,6 +193,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="fld"><label>重量 KG</label><input id="a_weight" type="number" placeholder="0"></div>
       </div>
       <div class="fld"><label>預計到貨日期</label><input id="a_arrive" type="date"></div>
+      <div class="fld"><label>出貨日期</label><input id="a_shipDate" type="date"></div>
       <div class="sec">狀態</div>
       <div class="r2">
         <div class="fld"><label>封箱狀態</label><select id="a_seal"><option value="">— 選擇 —</option></select></div>
@@ -374,7 +375,7 @@ function nextPackId(){
 }
 async function openAdd(){
   document.getElementById('a_id').value=nextPackId();
-  ['a_box','a_weight','a_arrive','a_note'].forEach(id=>document.getElementById(id).value='');
+  ['a_box','a_weight','a_arrive','a_shipDate','a_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('reqSrch').value='';
   selectedReqIds.clear();
   fillSel('a_seal','封箱狀態');fillSel('a_ship','發貨狀態');
@@ -418,6 +419,7 @@ async function saveNew(){
     seal:document.getElementById('a_seal').value,
     ship:document.getElementById('a_ship').value,
     note:document.getElementById('a_note').value.trim(),
+    shipDate:document.getElementById('a_shipDate').value,
     reqPageIds:[...selectedReqIds],
   };
   if(!body.packId){toast('請填寫包貨單編號');btn.disabled=false;btn.textContent='新增到 Notion';return;}
@@ -458,7 +460,8 @@ function openDetail(pageId){
         <div class="df"><div class="df-l">PJ箱號</div><input class="di" id="d_box" value="${r.box||''}"></div>
         <div class="df"><div class="df-l">重量 KG</div><input class="di" id="d_weight" type="number" value="${r.weight||0}"></div>
         <div class="df"><div class="df-l">預計到貨日期</div><input class="di" id="d_arrive" type="date" value="${r.arrive||''}"></div>
-        <div class="df"><div class="df-l">需求單數</div><span style="font-size:16px;font-weight:600">${r.reqCount||0} 筆</span></div>
+        <div class="df"><div class="df-l">出貨日期</div><input class="di" id="d_shipDate" type="date" value="${r.shipDate||''}"></div>
+        <div class="df full"><div class="df-l">需求單數</div><span style="font-size:16px;font-weight:600">${r.reqCount||0} 筆</span></div>
         <div class="df full" style="border-bottom:none"><div class="df-l">預估重量</div><span style="font-size:20px;font-weight:700;color:var(--purple)">${r.estWeight||0} KG</span></div>
       </div>
     </div>
@@ -487,6 +490,7 @@ async function saveDetail(){
     seal:document.getElementById('d_seal').dataset.val||'',
     ship:document.getElementById('d_ship').dataset.val||'',
     note:document.getElementById('d_note').value.trim(),
+    shipDate:document.getElementById('d_shipDate').value,
     reqIds:r?.reqIds||[],
   };
   try{
