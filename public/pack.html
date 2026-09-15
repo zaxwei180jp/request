@@ -661,9 +661,13 @@ function renderEditReqList(){
   const q = document.getElementById('editReqSrch').value.toLowerCase();
   const r = records.find(x=>x._pageId===viewingId);
   const currentIds = new Set(r?.reqIds||[]);
-  // Include removed reqs (they should be available again)
+  // Removed reqs: show them as available again
   const removedReqs = editRemovedReqCache.filter(req => editReqsRemovedIds.has(req.id));
-  const allAvailable = [...editUnlinkedReqs, ...removedReqs];
+  // Only show unlinked reqs that are 集貨中, plus removed reqs
+  const allAvailable = [
+    ...editUnlinkedReqs.filter(req => req.ship === '集貨中'),
+    ...removedReqs,
+  ];
   const data = allAvailable.filter(req=>{
     const mQ = !q||(req.label+req.name+req.client).toLowerCase().includes(q);
     return mQ && !currentIds.has(req.id);
