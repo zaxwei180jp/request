@@ -267,10 +267,14 @@ export default async function handler(req) {
     // ── REQ DELETE ──────────────────────────────────────────────
     if (action === 'delete') {
       const pageId = url.searchParams.get('id');
-      await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+      const delRes = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
         method: 'PATCH', headers: nHeaders(),
         body: JSON.stringify({ archived: true }),
       });
+      if (!delRes.ok) {
+        const errData = await delRes.json().catch(() => ({}));
+        return json({ ok: false, error: errData.message || `Notion error ${delRes.status}` }, 500);
+      }
       return json({ ok: true });
     }
 
@@ -652,17 +656,6 @@ export default async function handler(req) {
       return json(results);
     }
 
-    // ── PRODUCT DEBUG ─────────────────────────────────────────────
-    if (action === 'product_debug') {
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
-      const props = data.results[0].properties;
-      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
-    }
-
     // ── DB STATS ─────────────────────────────────────────────────
     if (action === 'db_stats') {
       const results = await queryAll(DB_REQ);
@@ -739,28 +732,6 @@ export default async function handler(req) {
       }));
 
       return json({ ok: true, updated, skipped, total: needsFill.length });
-    }
-
-    // PACK TEST - fetch only 1 record
-    if (action === 'pack_test') {
-      const start = Date.now();
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
-        method: 'POST', headers: nHeaders(),
-        body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      return json({ ms: Date.now()-start, count: data.results?.length, error: data.message });
-    }
-
-    // PACK TEST 10
-    if (action === 'pack_test10') {
-      const start = Date.now();
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
-        method: 'POST', headers: nHeaders(),
-        body: JSON.stringify({ page_size: 10 }),
-      });
-      const data = await res.json();
-      return json({ ms: Date.now()-start, count: data.results?.length, has_more: data.has_more, error: data.message });
     }
 
     return json({ error: 'Unknown action' }, 400);
