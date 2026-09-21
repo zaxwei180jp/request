@@ -554,7 +554,14 @@ async function batchUpdate(i){
     try{
       const body={};
       if(a.key==='seal') body.seal=a.val;
-      if(a.key==='ship') body.ship=a.val;
+      if(a.key==='ship'){
+        body.ship=a.val;
+        // ship='完成' 時帶入 reqIds，觸發 cascade 更新關聯需求單
+        if(a.val==='完成'){
+          const rec=records.find(r=>r.id===pid);
+          if(rec?.reqIds?.length) body.reqIds=rec.reqIds;
+        }
+      }
       const res=await fetch(`${API}?action=pack_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const d=await res.json();if(d.error)fail++;else ok++;
     }catch(e){fail++;}
