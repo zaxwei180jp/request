@@ -315,6 +315,11 @@ let records=[],schema={},shiptoList=[];
 let activeFilter='all',statusFilters={buy:'',pay:'',ship:''};
 let selectMode=false,selectedIds=new Set(),viewingId=null;
 
+// 分頁狀態
+let _nextCursor=null,_hasMore=false,_loadingMore=false;
+// 全量統計（背景載入）
+let _globalStats=null;
+
 async function loadSchema(){
   try{
     const r=await fetch(API+'?action=schema',{cache:'no-store'});
@@ -331,39 +336,95 @@ async function loadShipto(){
     if(Array.isArray(d)){shiptoList=d;localStorage.setItem(STORAGE_KEYS.SHIPTO,JSON.stringify(d));}
   }catch(e){shiptoList=[];}
 }
+
+// 背景載入全量統計，不阻塞主畫面
+async function loadStats(){
+  try{
+    const r=await fetch(API+'?action=list_stats');
+    const d=await r.json();
+    if(!d.error){
+      _globalStats=d;
+      renderStats(); // 更新 stats bar
+      const sub=document.getElementById('hdrSub');
+      if(sub&&!sub.textContent.includes('失敗'))
+        sub.textContent=`共 ${d.total} 筆 · ${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})} 同步`;
+    }
+  }catch(e){}
+}
+
 async function loadRecords(silent=false){
   if(!silent) lbar(30);
+  _nextCursor=null; _hasMore=false;
   try{
-    const r=await fetch(API+'?action=list');
+    const r=await fetch(API+'?action=list&limit=100');
     if(!silent) lbar(80);
     const d=await r.json();
     if(d.error) throw new Error(d.error);
-    records=d;
-    saveCache(d);
+    records=d.records||[];
+    _nextCursor=d.next_cursor||null;
+    _hasMore=d.has_more||false;
+    saveCache({records,cursor:_nextCursor,hasMore:_hasMore});
     if(!silent) lbar(100);
     const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
+    document.getElementById('hdrSub').textContent=`顯示 ${records.length} 筆${_hasMore?' · 載入中…':''} · ${now}`;
   }catch(e){
     if(!silent){lbar(100);toastErr('資料載入失敗',e);}
     document.getElementById('hdrSub').textContent='載入失敗';
   }
 }
+
+async function loadMore(){
+  if(_loadingMore||!_hasMore||!_nextCursor) return;
+  _loadingMore=true;
+  try{
+    const r=await fetch(`${API}?action=list&limit=100&cursor=${encodeURIComponent(_nextCursor)}`);
+    const d=await r.json();
+    if(d.error) throw new Error(d.error);
+    const newRecs=d.records||[];
+    records=[...records,...newRecs];
+    _nextCursor=d.next_cursor||null;
+    _hasMore=d.has_more||false;
+    saveCache({records,cursor:_nextCursor,hasMore:_hasMore});
+    renderList(); // 只更新列表，不動 stats
+    const sub=document.getElementById('hdrSub');
+    if(sub) sub.textContent=`顯示 ${records.length} 筆${_hasMore?' · 更多…':'（全部）'} · 剛剛`;
+  }catch(e){toastErr('載入更多失敗',e);}
+  finally{_loadingMore=false;}
+}
+
+// 捲動偵測：捲到底時自動載入下一頁
+function setupInfiniteScroll(){
+  window.addEventListener('scroll',()=>{
+    if(_loadingMore||!_hasMore) return;
+    const scrolled=window.scrollY+window.innerHeight;
+    const total=document.body.scrollHeight;
+    if(scrolled>=total-300) loadMore();
+  },{passive:true});
+}
+
 async function loadAll(force=false){
   if(force){
-    // Clear all caches on manual refresh
     ['schema_req_v1','schema_pack_v1','schema_freight_v1','shipto_v1',
      'req_cache_v1','pack_cache_v1','freight_cache_v1'].forEach(k=>localStorage.removeItem(k));
+    _globalStats=null;
   }
   if(!force){
     const cached=loadCache();
     if(cached){
-      records=cached;
+      // 支援新格式（物件）和舊格式（陣列）
+      if(Array.isArray(cached)){
+        records=cached; _hasMore=false; _nextCursor=null;
+      } else {
+        records=cached.records||[]; _hasMore=cached.hasMore||false; _nextCursor=cached.cursor||null;
+      }
       renderAll();
-      document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;
+      document.getElementById('hdrSub').textContent=`顯示 ${records.length} 筆${_hasMore?' · 快取中…':''} · 快取中…`;
     }
   }
   await Promise.allSettled([loadSchema(),loadShipto(),loadRecords(false)]);
   renderAll();
+  // 背景載入全量統計（不阻塞主流程）
+  loadStats();
 }
 
 function clearSearch(){
@@ -416,19 +477,33 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (k) setFilter(k);
     }
   });
+  setupInfiniteScroll();
 });
 function toggleChip(k,v){if(!k||!v)return;statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
 
 function renderStats(){
   const base=baseFiltered();
   const q=document.getElementById('srchInput').value.trim();
-  const unstarted=base.filter(r=>r.buy==='未開始').length;
-  const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
-  const unpaid=unpaidBase.length;
-  const unpaidAmt=sum(unpaidBase, r => toNumber(r.total));
-  const collecting=base.filter(r=>r.ship==='集貨中').length;
+  const hasFilter=q||statusFilters.buy||statusFilters.pay||statusFilters.ship;
+  // 有搜尋/篩選時用目前 records 計算（局部）；否則優先用全量統計
+  let unstarted,unpaid,unpaidAmt,collecting,total;
+  if(hasFilter||!_globalStats){
+    unstarted=base.filter(r=>r.buy==='未開始').length;
+    const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
+    unpaid=unpaidBase.length;
+    unpaidAmt=sum(unpaidBase, r => toNumber(r.total));
+    collecting=base.filter(r=>r.ship==='集貨中').length;
+    total=base.length;
+  } else {
+    // 使用全量統計數字（正確）
+    unstarted=_globalStats.unstarted;
+    unpaid=_globalStats.unpaid;
+    unpaidAmt=_globalStats.unpaidAmt;
+    collecting=_globalStats.collecting;
+    total=_globalStats.total;
+  }
   const items=[
-    {k:'all',n:base.length,l:q?`${base.length} 筆`:'總筆數'},
+    {k:'all',n:total,l:q?`${base.length} 筆`:'總筆數'},
     {k:'buy_未開始',n:unstarted,l:'購買未開始'},
     {k:'pay_未付款',n:unpaid,l:'未付款',s:'¥'+unpaidAmt.toLocaleString()},
     {k:'ship_集貨中',n:collecting,l:'發貨集貨中'},
