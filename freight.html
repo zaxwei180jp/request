@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>貨物運費</title>
+<style>
+:root{
+  --purple:#6B64B8;--pl:#EFEFF5;
+  --bg:#F2F2F7;--card:#fff;--bg2:#E8E8ED;
+  --text:#1C1C1E;--muted:#6C6C70;--hint:#AEAEB2;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
+  --r:16px;--rs:10px;--shadow:0 2px 8px rgba(0,0,0,0.06);
+  --green:#3D7A65;--gbg:#E8F2ED;--red:#8A5040;--rbg:#F0E9E5;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#000;--card:#1C1C1E;--bg2:#2C2C2E;
+  --text:#FFFFFF;--muted:#8E8E93;--hint:#48484A;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --shadow:0 2px 8px rgba(0,0,0,0.5);
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
+.nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
+.nav-tab{flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;gap:6px}
+.nav-tab.active{color:var(--purple);border-bottom-color:var(--purple);font-weight:700}
+.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
+.hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hdr-left h1{font-size:22px;font-weight:700}
+.hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
+.hdr-btns{display:flex;gap:8px;align-items:center}
+.btn-icon{background:var(--bg2);border:none;border-radius:var(--rs);width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.btn-add{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);height:40px;padding:0 16px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.srch{display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:var(--rs);padding:10px 14px}
+.srch svg{flex-shrink:0;opacity:.4}
+.srch input{border:none;background:transparent;flex:1;font-size:16px;color:var(--text);outline:none}
+.srch input::placeholder{color:var(--hint)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 0;background:var(--card)}
+.chips::-webkit-scrollbar{display:none}
+.chip{border:.5px solid var(--border2);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--card);color:var(--muted);flex-shrink:0}
+.chip.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.chip-gap{height:10px;background:var(--card)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 16px}
+.stat{background:var(--card);border-radius:var(--rs);padding:12px 10px;text-align:center;box-shadow:var(--shadow)}
+.stat-n{font-size:18px;font-weight:700;color:var(--purple)}
+.stat-s{font-size:11px;color:var(--purple);font-weight:600;margin-top:2px}
+.stat-l{font-size:10px;color:var(--hint);margin-top:3px}
+.list{padding:0 16px 120px;display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid transparent}
+.card.selected{border-color:var(--purple);background:rgba(83,74,183,.05)}
+.card-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border2);display:none;flex-shrink:0;align-items:center;justify-content:center}
+.select-mode .card-check{display:flex}
+.card.selected .card-check{background:var(--purple);border-color:var(--purple);color:#fff;font-size:13px;font-weight:700}
+.batch{display:none;background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px;gap:14px;flex-direction:column}
+.batch.open{display:flex}
+.batch-top{display:flex;justify-content:space-between;align-items:center}
+.batch-count{font-size:15px;font-weight:700;color:var(--purple)}
+.batch-ctrl{display:flex;gap:8px}
+.batch-ctrl button{border:.5px solid var(--border2);border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;background:var(--card);color:var(--muted)}
+.batch-group-l{font-size:12px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.batch-opts{display:flex;gap:8px;flex-wrap:wrap}
+.batch-opt{border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.batch-opt:active{opacity:.75}
+.bo-co{background:#E4EDF5;color:#3A6A94}
+.bo-cl{background:#E8F2ED;color:#3D7A65}
+.btn-icon.on{background:var(--purple);color:#fff}
+.card:active{opacity:.8}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.card-id{font-size:16px;font-weight:700;color:var(--purple)}
+.card-pack{font-size:13px;color:var(--muted);margin-top:3px}
+.card-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.bl{font-size:10px;color:var(--hint)}
+.badge{display:inline-flex;align-items:center;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;gap:4px}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;display:inline-block}
+.b-paid{background:var(--gbg);color:var(--green)}
+.b-unpaid{background:#F2EDE0;color:#7A5E2E}
+.b-def{background:var(--bg2);color:var(--muted)}
+.card-client{font-size:17px;font-weight:700;margin-bottom:12px}
+.bricks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.brick{background:var(--bg2);border-radius:var(--rs);padding:10px 12px}
+.brick-l{font-size:10px;color:var(--hint);margin-bottom:4px;font-weight:500}
+.brick-v{font-size:15px;font-weight:600}
+.brick-v.pos{color:var(--green)}
+.brick-v.neg{color:var(--red)}
+.brick.span2{grid-column:1/-1}
+.card-note{font-size:13px;color:var(--muted);margin-top:10px}
+.empty{text-align:center;padding:80px 16px;color:var(--muted)}
+.empty-ico{font-size:56px;margin-bottom:16px}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,.95);backdrop-filter:blur(10px);color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end}
+.ov.open{display:flex}
+.sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .3s ease}
+@keyframes up{from{transform:translateY(80px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sh-bar{width:40px;height:4px;background:var(--border2);border-radius:4px;margin:14px auto 0}
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 14px}
+.sh-title{font-size:18px;font-weight:700}
+.btn-x{background:var(--bg2);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}
+.fbody{padding:0 20px}
+.fld{margin-bottom:16px}
+.fld label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.fld input,.fld select{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:13px 14px;font-size:16px;background:var(--card);color:var(--text);outline:none;-webkit-appearance:none}
+.fld input:focus,.fld select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+.fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.factions{display:flex;gap:12px;margin-top:24px}
+.btn-cf{flex:1;background:var(--bg2);border:none;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:var(--muted);font-weight:500}
+.btn-sv{flex:2;background:var(--purple);border:none;border-radius:var(--rs);padding:15px;font-size:16px;font-weight:700;cursor:pointer;color:#fff}
+.btn-sv:disabled{opacity:.6}
+.sec{font-size:12px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 14px;padding-bottom:10px;border-bottom:.5px solid var(--border)}
+.dov{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto}
+.dov.open{display:block;animation:fin .2s ease}
+@keyframes fin{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+.dnav{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.btn-back{background:none;border:none;padding:4px;cursor:pointer;color:var(--purple);display:flex;align-items:center;gap:6px;font-size:16px;font-weight:600}
+.d-id{font-size:18px;font-weight:700}
+.btn-sd{background:var(--purple);color:#fff;border:none;border-radius:var(--rs);padding:10px 20px;font-size:15px;font-weight:700;cursor:pointer}
+.btn-sd:disabled{opacity:.6}
+.dbody{padding:16px;display:flex;flex-direction:column;gap:14px;padding-bottom:40px}
+.dc{background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.dch{padding:14px 16px 10px;font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.08em;border-bottom:.5px solid var(--border)}
+.dgrid{display:grid;grid-template-columns:1fr 1fr}
+.df{padding:14px 16px;border-bottom:.5px solid var(--border);border-right:.5px solid var(--border)}
+.df:nth-child(even){border-right:none}
+.df.full{grid-column:1/-1;border-right:none}
+.df-l{font-size:11px;color:var(--hint);margin-bottom:6px;font-weight:600}
+.di{width:100%;border:none;background:transparent;font-size:16px;font-weight:600;color:var(--text);outline:none;padding:0;resize:none}
+.di:focus{color:var(--purple)}
+.di[type=number]{-moz-appearance:textfield}
+.di[type=number]::-webkit-outer-spin-button,.di[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.dsel{width:100%;border:none;background:transparent;font-size:16px;font-weight:600;color:var(--text);outline:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0 center;padding-right:16px}
+.d-ro{font-size:16px;font-weight:600;color:var(--muted)}
+.d-num{font-size:18px;font-weight:700}
+.d-pos{color:var(--green)}
+.d-neg{color:var(--red)}
+.d-big{font-size:24px;font-weight:700}
+</style>
+<script src="shared.js"></script>
+</head>
+<body>
+<div class="lbar" id="lbar"></div>
+<div class="toast" id="toast"></div>
+<nav class="nav">
+  <a href="/" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    需求單
+  </a>
+  <a href="/pack.html" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+    出貨單
+  </a>
+  <span class="nav-tab active">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    運費
+  </span>
+</nav>
+<div class="hdr">
+  <div class="hdr-row">
+    <div class="hdr-left"><h1>貨物運費</h1><p id="hdrSub">載入中…</p></div>
+    <div class="hdr-btns">
+      <button class="btn-icon" id="btnSelect" onclick="toggleSelect()">選取</button>
+      <button class="btn-icon" onclick="loadAll(true)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+      <button class="btn-add" onclick="openAdd()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
+    </div>
+  </div>
+  <div class="srch">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="srchInput" placeholder="搜尋編號、出貨單、委託人…" oninput="renderAll()">
+  </div>
+</div>
+<div class="chips" id="chips"></div>
+<div class="chip-gap"></div>
+<div class="stats" id="statsBar"></div>
+<div class="batch" id="batchPanel"></div>
+<div class="list" id="list"></div>
+
+<!-- ADD -->
+<div class="ov" id="addOv">
+  <div class="sheet">
+    <div class="sh-bar"></div>
+    <div class="sh-hdr"><span class="sh-title">新增貨物運費</span><button class="btn-x" onclick="closeAdd()">✕</button></div>
+    <div class="fbody">
+      <div class="sec">基本資訊</div>
+      <div class="fld"><label>編號</label><input id="a_id" placeholder="M031"></div>
+      <div class="fld"><label>出貨單</label><select id="a_pack"><option value="">— 選擇 —</option></select></div>
+      <div class="fld"><label>委託人</label><select id="a_client"><option value="">— 選擇 —</option></select></div>
+      <div class="sec">費用</div>
+      <div class="r2">
+        <div class="fld"><label>公司單價</label><input id="a_companyPrice" type="number" placeholder="180"></div>
+        <div class="fld"><label>客戶單價</label><input id="a_clientPrice" type="number" placeholder="200"></div>
+      </div>
+      <div class="sec">狀態</div>
+      <div class="r2">
+        <div class="fld"><label>公司狀態</label><select id="a_companyStatus"><option value="">— 選擇 —</option></select></div>
+        <div class="fld"><label>客戶狀態</label><select id="a_clientStatus"><option value="">— 選擇 —</option></select></div>
+      </div>
+      <div class="sec">其他</div>
+      <div class="fld"><label>重量差</label><input id="a_weightDiff" placeholder="選填"></div>
+      <div class="fld"><label>備註</label><input id="a_note" placeholder="選填"></div>
+      <div class="factions">
+        <button class="btn-cf" onclick="closeAdd()">取消</button>
+        <button class="btn-sv" id="btnAdd" onclick="saveNew()">新增到 Notion</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="dov" id="detailOv">
+  <div class="dnav">
+    <button class="btn-back" onclick="closeDetail()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>返回</button>
+    <span class="d-id" id="dId"></span>
+    <button class="btn-sd" id="btnSave" onclick="saveDetail()">儲存</button>
+  </div>
+  <div class="dbody" id="dbody"></div>
+</div>
+
+<script>
+let records=[],schema={},packListF=[],shiptoListF=[];
+let statusFilters={company:'',client:''};
+let selectMode=false,selectedIds=new Set();
+let viewingId=null;
+
+// freight.html 特定的快取邏輯（覆蓋 shared.js）
+const FREIGHT_CACHE_KEY='freight_cache_v1';
+function saveCache(d){try{localStorage.setItem(FREIGHT_CACHE_KEY,JSON.stringify({ts:Date.now(),data:d}));}catch(e){}}
+function loadCache(){try{const r=localStorage.getItem(FREIGHT_CACHE_KEY);if(!r)return null;const{ts,data}=JSON.parse(r);if(Date.now()-ts>300000)return null;return data;}catch(e){return null;}}
+
+// freight.html 特定函數
+function fmt(n){return n!=null?'$'+Number(n).toLocaleString():'—';}
+
+async function loadSchema(){
+  const SK='schema_freight_v1';
+  try{
+    const cached=localStorage.getItem(SK);
+    if(cached){schema=JSON.parse(cached);}
+    const r=await fetch(API+'?action=freight_schema');
+    const d=await r.json();
+    if(!d.error){schema=d;localStorage.setItem(SK,JSON.stringify(d));}
+  }catch(e){}
+}
+async function loadRecords(silent=false){
+  if(!silent) lbar(30);
+  try{
+    const r=await fetch(API+'?action=freight_list');
+    if(!silent) lbar(80);
+    const d=await r.json();if(d.error)throw new Error(d.error);
+    records=d;saveCache(d);
+    if(!silent) lbar(100);
+    const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
+  }catch(e){
+    if(!silent){lbar(100);toastErr('載入失敗',e);}
+    document.getElementById('hdrSub').textContent='載入失敗';
+  }
+}
+async function loadAll(force=false){
+  if(force){
+    // Clear all caches on manual refresh
+    ['schema_req_v1','schema_pack_v1','schema_freight_v1','shipto_v1',
+     'req_cache_v1','pack_cache_v1','freight_cache_v1'].forEach(k=>localStorage.removeItem(k));
+  }
+  if(!force){
+    const cached=loadCache();
+    if(cached){records=cached;renderAll();document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;}
+  }
+  await Promise.allSettled([loadSchema(),loadRecords(false)]);
+  renderAll();
+}
+
+function bc(s){return{'已付款':'b-paid','未付款':'b-unpaid'}[s]||'b-def';}
+function badge(s){return s?`<span class="badge ${bc(s)}">${s}</span>`:'';}
+
+function baseFiltered(){
+  const q=document.getElementById('srchInput').value.toLowerCase();
+  return records.filter(r=>{
+    const mQ=!q||(r.id+r.pack+r.clientCode+r.clientName).toLowerCase().includes(q);
+    const mC=!statusFilters.company||r.companyStatus===statusFilters.company;
+    const mCL=!statusFilters.client||r.clientStatus===statusFilters.client;
+    return mQ&&mC&&mCL;
+  });
+}
+
+function renderChips(){
+  const coOpts=schema['公司狀態']?.options||[];
+  const clOpts=schema['客戶狀態']?.options||[];
+  const all=[...coOpts.map(o=>({k:'company',v:o,l:`公司:${o}`})),...clOpts.map(o=>({k:'client',v:o,l:`客戶:${o}`}))];
+  document.getElementById('chips').innerHTML=all.map(c=>`<span class="chip${statusFilters[c.k]===c.v?' on':''}" onclick="toggleChip('${c.k}','${c.v}')">${c.l}</span>`).join('');
+}
+function toggleChip(k,v){statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
+
+function renderStats(){
+  const data=baseFiltered();
+  const unpaidTotal=data.filter(r=>r.companyStatus==='未付款').reduce((s,r)=>s+Number(r.companyAmount||0),0);
+  const dTotal=data.reduce((s,r)=>s+Number(r.diff||0),0);
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat"><div class="stat-n">${data.length}</div><div class="stat-l">總筆數</div></div>
+    <div class="stat"><div class="stat-n" style="font-size:16px">${fmt(unpaidTotal)}</div><div class="stat-l">公司未付款</div></div>
+    <div class="stat"><div class="stat-n" style="font-size:16px;color:${dTotal>=0?'var(--green)':'var(--red)'}">${fmt(dTotal)}</div><div class="stat-l">差額合計</div></div>`;
+}
+
+function renderList(){
+  const data=baseFiltered();
+  const el=document.getElementById('list');
+  if(selectMode) el.classList.add('select-mode'); else el.classList.remove('select-mode');
+  if(!data.length){el.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>沒有符合的運費資料</p></div>`;return;}
+  el.innerHTML=data.map(r=>`
+    <div class="card${selectedIds.has(r._pageId)?' selected':''}" onclick="cardClick('${r._pageId}')">
+      <div class="card-top">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="card-check">${selectedIds.has(r._pageId)?'✓':''}</div>
+          <div class="card-id">${r.id||'—'}</div>
+          <div class="card-pack">${r.pack||'—'}</div>
+        </div>
+        <div class="card-badges">
+          <span class="bl">公司</span>${badge(r.companyStatus)}
+          <span class="bl">客戶</span>${badge(r.clientStatus)}
+        </div>
+      </div>
+      <div class="card-client">${r.clientCode||''}${r.clientName?' '+r.clientName:''}</div>
+      <div class="bricks">
+        <div class="brick"><div class="brick-l">PJ箱號</div><div class="brick-v">${r.pjBox||'—'}</div></div>
+        <div class="brick"><div class="brick-l">日期</div><div class="brick-v">${r.date||'—'}</div></div>
+        <div class="brick"><div class="brick-l">公司運費</div><div class="brick-v">${fmt(r.companyAmount)}</div></div>
+        <div class="brick"><div class="brick-l">客戶運費</div><div class="brick-v">${fmt(r.clientAmount)}</div></div>
+        <div class="brick"><div class="brick-l">重量</div><div class="brick-v">${r.weight||0} KG</div></div>
+        <div class="brick"><div class="brick-l">重量差</div><div class="brick-v">${r.weightDiff||'—'}</div></div>
+      </div>
+      ${r.note?`<div class="card-note">${r.note}</div>`:''}
+    </div>`).join('');
+}
+function renderAll(){renderChips();renderStats();renderList();}
+
+function fillSel(id,key,cur=''){
+  const el=document.getElementById(id);
+  const opts=schema[key]?.options||[];
+  el.innerHTML='<option value="">— 選擇 —</option>'+opts.map(o=>`<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('');
+}
+function nextFreightId(){
+  const nums=records.map(r=>{const m=String(r.id).match(/^M0*(\d+)$/i);return m?parseInt(m[1]):0;}).filter(n=>n>0);
+  return 'M'+String(nums.length?Math.max(...nums)+1:1).padStart(3,'0');
+}
+async function openAdd(){
+  document.getElementById('a_id').value=nextFreightId();
+  ['a_companyPrice','a_clientPrice','a_weightDiff','a_note'].forEach(id=>document.getElementById(id).value='');
+  fillSel('a_companyStatus','公司狀態');fillSel('a_clientStatus','客戶狀態');
+  // Always reload unlinked packs fresh
+  try{
+    const r=await fetch(API+'?action=unlinked_packs');
+    packListF=await r.json();
+  }catch(e){packListF=[];}
+  const packSel=document.getElementById('a_pack');
+  packSel.innerHTML='<option value="">— 選擇出貨單 —</option>'+packListF.map(p=>`<option value="${p.id}">${p.label}${p.box?' ('+p.box+')':''}</option>`).join('');
+  if(!shiptoListF.length){
+    try{const r=await fetch(API+'?action=shipto_list');const d=await r.json();shiptoListF=Array.isArray(d)?d:[];}catch(e){shiptoListF=[];}
+  }
+  const clientSel=document.getElementById('a_client');
+  clientSel.innerHTML='<option value="">— 選擇委託人 —</option>'+shiptoListF.map(s=>`<option value="${s.id}">${s.code} ${s.name}</option>`).join('');
+  document.getElementById('addOv').classList.add('open');
+}
+function closeAdd(){document.getElementById('addOv').classList.remove('open');}
+async function saveNew(){
+  const btn=document.getElementById('btnAdd');btn.disabled=true;btn.textContent='新增中…';
+  const body={
+    freightId:document.getElementById('a_id').value.trim(),
+    packPageId:document.getElementById('a_pack').value,
+    clientPageId:document.getElementById('a_client').value,
+    companyPrice:document.getElementById('a_companyPrice').value||0,
+    clientPrice:document.getElementById('a_clientPrice').value||0,
+    companyStatus:document.getElementById('a_companyStatus').value,
+    clientStatus:document.getElementById('a_clientStatus').value,
+    weightDiff:document.getElementById('a_weightDiff').value.trim(),
+    note:document.getElementById('a_note').value.trim(),
+  };
+  if(!body.freightId){toast('請填寫編號');btn.disabled=false;btn.textContent='新增到 Notion';return;}
+  try{
+    const r=await fetch(API+'?action=freight_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();if(d.error)throw new Error(d.error);
+    toast(`✅ ${body.freightId} 已新增`);closeAdd();await loadAll(true);
+  }catch(e){toastErr('操作失敗',e);}
+  btn.disabled=false;btn.textContent='新增到 Notion';
+}
+
+function openDetail(pageId){
+  const r=records.find(x=>x._pageId===pageId);
+  if(!r){toast('找不到資料');return;}
+  saveScroll();viewingId=pageId;
+  document.getElementById('dId').textContent=r.id||'—';
+  const coOpts=schema['公司狀態']?.options||[];
+  const clOpts=schema['客戶狀態']?.options||[];
+  const msel=(opts,cur,id)=>`<select class="dsel" id="${id}"><option value="">—</option>${opts.map(o=>`<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('')}</select>`;
+  const diff=Number(r.diff||0);
+  document.getElementById('dbody').innerHTML=`
+    <div class="dc">
+      <div class="dch">基本資訊</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">出貨單</div><span class="d-ro">${r.pack||'—'}</span></div>
+        <div class="df"><div class="df-l">委託人</div><span class="d-ro">${r.clientCode||''}${r.clientName?' '+r.clientName:''}</span></div>
+        <div class="df"><div class="df-l">PJ箱號</div><span class="d-ro">${r.pjBox||'—'}</span></div>
+        <div class="df"><div class="df-l">重量 KG</div><span class="d-ro">${r.weight||0}</span></div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">費用</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">公司單價</div><input class="di" id="d_cp" type="number" value="${r.companyPrice||0}"></div>
+        <div class="df"><div class="df-l">客戶單價</div><input class="di" id="d_kp" type="number" value="${r.clientPrice||0}"></div>
+        <div class="df"><div class="df-l">公司金額</div><span class="d-num">${fmt(r.companyAmount)}</span></div>
+        <div class="df"><div class="df-l">客戶金額</div><span class="d-num">${fmt(r.clientAmount)}</span></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">差額</div><span class="d-big ${diff>=0?'d-pos':'d-neg'}">${fmt(diff)}</span></div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">狀態</div>
+      <div class="dgrid">
+        <div class="df"><div class="df-l">公司狀態</div>${msel(coOpts,r.companyStatus,'d_cs')}</div>
+        <div class="df" style="border-bottom:none"><div class="df-l">客戶狀態</div>${msel(clOpts,r.clientStatus,'d_ks')}</div>
+      </div>
+    </div>
+    <div class="dc">
+      <div class="dch">其他</div>
+      <div class="dgrid">
+        <div class="df full"><div class="df-l">重量差</div><input class="di" id="d_wd" value="${r.weightDiff||''}"></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">備註</div><textarea class="di" id="d_note" rows="3" style="height:72px">${r.note||''}</textarea></div>
+      </div>
+    </div>`;
+  document.getElementById('detailOv').classList.add('open');
+}
+function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
+async function saveDetail(){
+  const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
+  const body={
+    companyPrice:document.getElementById('d_cp').value,
+    clientPrice:document.getElementById('d_kp').value,
+    companyStatus:document.getElementById('d_cs').value,
+    clientStatus:document.getElementById('d_ks').value,
+    weightDiff:document.getElementById('d_wd').value,
+    note:document.getElementById('d_note').value.trim(),
+  };
+  try{
+    const r=await fetch(`${API}?action=freight_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();if(d.error)throw new Error(d.error);
+    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
+  }catch(e){toastErr('操作失敗',e);}
+  btn.disabled=false;btn.textContent='儲存';
+}
+function toggleSelect(){
+  selectMode=!selectMode;selectedIds.clear();
+  const btn=document.getElementById('btnSelect');
+  btn.classList.toggle('on',selectMode);
+  btn.textContent=selectMode?'退出':'選取';
+  renderBatch();renderList();
+}
+function selectAll(){baseFiltered().forEach(r=>selectedIds.add(r._pageId));renderBatch();renderList();}
+function clearSelect(){selectedIds.clear();renderBatch();renderList();}
+
+function renderBatch(){
+  const panel=document.getElementById('batchPanel');
+  panel.classList.toggle('open',selectMode);
+  if(!selectMode)return;
+  const coOpts=schema['公司狀態']?.options||[];
+  const clOpts=schema['客戶狀態']?.options||[];
+  const cnt=selectedIds.size;
+  const actions=[
+    ...coOpts.map((o,i)=>({i,val:o,key:'companyStatus'})),
+    ...clOpts.map((o,i)=>({i:coOpts.length+i,val:o,key:'clientStatus'})),
+  ];
+  window._ba=actions;
+  panel.innerHTML=`
+    <div class="batch-top">
+      <span class="batch-count">已選 ${cnt} 筆</span>
+      <div class="batch-ctrl"><button onclick="selectAll()">全選</button><button onclick="clearSelect()">取消</button></div>
+    </div>
+    <div><div class="batch-group-l">公司狀態</div><div class="batch-opts">${coOpts.map((o,i)=>`<button class="batch-opt bo-co" ${cnt===0?'disabled':''} onclick="batchUpdate(${i})">${o}</button>`).join('')}</div></div>
+    <div><div class="batch-group-l">客戶狀態</div><div class="batch-opts">${clOpts.map((o,i)=>`<button class="batch-opt bo-cl" ${cnt===0?'disabled':''} onclick="batchUpdate(${coOpts.length+i})">${o}</button>`).join('')}</div></div>`;
+}
+
+function cardClick(pageId){
+  if(selectMode){
+    if(selectedIds.has(pageId))selectedIds.delete(pageId);else selectedIds.add(pageId);
+    renderBatch();renderList();
+  } else { openDetail(pageId); }
+}
+
+async function batchUpdate(i){
+  const a=window._ba[i];if(!a||selectedIds.size===0)return;
+  if(!confirm(`確定將 ${selectedIds.size} 筆改為「${a.val}」？`))return;
+  const ids=[...selectedIds];let ok=0,fail=0;
+  await Promise.all(ids.map(async pid=>{
+    try{
+      const body={};
+      body[a.key]=a.val;
+      const res=await fetch(`${API}?action=freight_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const d=await res.json();if(d.error)fail++;else ok++;
+    }catch(e){fail++;}
+  }));
+  toast(fail>0?`✅ ${ok} 筆成功 ❌ ${fail} 筆失敗`:`✅ ${ok} 筆已更新`);
+  selectedIds.clear();await loadAll(true);
+}
+
+loadAll();
+</script>
+</body>
+</html>
