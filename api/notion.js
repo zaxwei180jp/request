@@ -176,13 +176,69 @@ export default async function handler(req) {
       return json(list);
     }
 
+    // ── REQ LIST STATS (全量，只取統計需要的欄位) ──────────────
+    if (action === 'list_stats') {
+      let results = [], cursor;
+      while (true) {
+        const body = {
+          page_size: 100,
+          sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+          // 只 filter properties 裡有 id 的欄位，減少回傳資料量
+        };
+        if (cursor) body.start_cursor = cursor;
+        const res = await nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
+          method: 'POST', headers: nHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) throw new Error(data.message || 'Query failed');
+        // 只保留統計需要的欄位
+        for (const page of data.results) {
+          const p = page.properties || {};
+          const g = id => val(prop(p, id));
+          results.push({
+            buy:   g('lA%3A_') || '',
+            pay:   g('ZFWL')   || '',
+            ship:  g('ko~P')   || '',
+            total: g('cECx')   || 0,
+          });
+        }
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+      // 計算統計
+      const unstarted   = results.filter(r => r.buy === '未開始').length;
+      const unpaidBase  = results.filter(r => r.pay === '未付款' && r.buy !== '缺貨' && r.buy !== '不購買');
+      const collecting  = results.filter(r => r.ship === '集貨中').length;
+      const unpaidAmt   = unpaidBase.reduce((s, r) => s + (Number(r.total) || 0), 0);
+      return json({
+        total: results.length,
+        unstarted,
+        unpaid: unpaidBase.length,
+        unpaidAmt,
+        collecting,
+      });
+    }
+
     // ── REQ LIST ────────────────────────────────────────────────
     if (action === 'list') {
-      // Fetch req pages and full shipto DB in parallel (faster than per-ID lookup)
-      const [results, shiptoResults] = await Promise.all([
-        queryAll(DB_REQ),
+      const cursor    = url.searchParams.get('cursor') || undefined;
+      const page_size = Math.min(parseInt(url.searchParams.get('limit') || '100'), 100);
+
+      // Fetch one page of req results and full shipto DB in parallel
+      const [reqRes, shiptoResults] = await Promise.all([
+        nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
+          method: 'POST', headers: nHeaders(),
+          body: JSON.stringify({
+            page_size,
+            sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+            ...(cursor ? { start_cursor: cursor } : {}),
+          }),
+        }).then(r => r.json()),
         queryAll(DB_SHIPTO, []),
       ]);
+
+      if (!reqRes.results) throw new Error(reqRes.message || 'Query failed');
+      const results = reqRes.results;
 
       // Build shipto map from full DB (one query instead of N queries)
       const shiptoMap = {};
@@ -203,7 +259,7 @@ export default async function handler(req) {
         return { label: titleP?.title?.[0]?.plain_text || '' };
       });
 
-      return json(results.map(page => {
+      const mapped = results.map(page => {
         const p = page.properties || {};
         const g = id => val(prop(p, id));
         const packRel   = prop(p, 'R_%3D%3A');
@@ -235,7 +291,12 @@ export default async function handler(req) {
           pack:       packIds_.map(r => packTitles[r.id]?.label || '').filter(Boolean).join(', '),
           _packIds:   packIds_.map(r => r.id),
         };
-      }));
+      });
+      return json({
+        records:     mapped,
+        has_more:    reqRes.has_more || false,
+        next_cursor: reqRes.next_cursor || null,
+      });
     }
 
     // ── REQ CREATE ──────────────────────────────────────────────
