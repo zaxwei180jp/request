@@ -181,6 +181,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
 .d-ro{font-size:16px;font-weight:600;color:var(--muted)}
 .d-big{font-size:22px;font-weight:700;color:var(--purple)}
+.d-big-input{font-size:22px;font-weight:700;color:var(--purple)}
 .ddel{padding:0 16px 30px}
 .btn-del{width:100%;background:#F0E8E8;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:#8A4444;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
 </style>
@@ -798,11 +799,11 @@ function openDetail(pageId){
     <div class="dc">
       <div class="dch">金額</div>
       <div class="dgrid">
-        <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}"></div>
-        <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}"></div>
-        <div class="df"><div class="df-l">報價 ¥</div><span class="d-big">¥${Number(r.quote||0).toLocaleString()}</span></div>
-        <div class="df"><div class="df-l">報價台幣 $</div><span class="d-big" style="color:var(--text)">$${Number(r.twQuote||0).toLocaleString()}</span></div>
-        <div class="df full" style="border-bottom:none"><div class="df-l">成本總價</div><span class="d-big" style="font-size:18px;color:var(--muted)">¥${total}</span></div>
+        <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}" oninput="detailAutoQuote()"></div>
+        <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}" oninput="detailAutoQuote()"></div>
+        <div class="df"><div class="df-l">報價 ¥</div><input class="di d-big-input" id="d_quote" type="number" value="${Number(r.quote||0)}"></div>
+        <div class="df"><div class="df-l">報價台幣 $</div><input class="di d-big-input" id="d_twquote" type="number" value="${Number(r.twQuote||0)}"></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">成本總價</div><span class="d-big" id="d_total_disp">¥${total}</span></div>
         <div class="df full" style="border-bottom:none"><div class="df-l">預估重量 (KG)</div><input class="di" id="d_estWeight" type="number" step="0.01" value="${r.estWeight||0}"></div>
       </div>
     </div>
@@ -876,7 +877,7 @@ async function saveDetail(){
     code:document.getElementById('d_code').value.trim(),
     qty:document.getElementById('d_qty').value||0,
     price:document.getElementById('d_price').value||0,
-    quote:(records.find(x=>x._pageId===viewingId)||{}).quote||0,
+    quote:document.getElementById('d_quote').value||0,
     shop:document.getElementById('d_shop').value,
     shiptoPageId:document.getElementById('d_shipto').value,
     type:document.getElementById('d_type').value,
@@ -885,7 +886,7 @@ async function saveDetail(){
     pay:document.getElementById('d_pay').dataset.val||'',
     ship:document.getElementById('d_ship').dataset.val||'',
     submit:document.getElementById('d_submit').value,
-    twQuote:(records.find(x=>x._pageId===viewingId)||{}).twQuote||0,
+    twQuote:document.getElementById('d_twquote').value||0,
     estWeight:document.getElementById('d_estWeight').value||0,
     done:document.getElementById('d_done').value,
   };
@@ -909,6 +910,17 @@ function autoQuote(){
   const qty=Number(document.getElementById('a_qty').value)||0;
   const price=Number(document.getElementById('a_price').value)||0;
   if(qty>0&&price>0) document.getElementById('a_quote').value=qty*price;
+}
+function detailAutoQuote(){
+  const qty=Number(document.getElementById('d_qty').value)||0;
+  const price=Number(document.getElementById('d_price').value)||0;
+  // 成本總價（唯讀顯示）
+  const cost=qty*price;
+  const disp=document.getElementById('d_total_disp');
+  if(disp) disp.textContent='¥'+cost.toLocaleString();
+  // 報價自動帶入（只在報價還沒被手動修改過時更新）
+  const quoteEl=document.getElementById('d_quote');
+  if(quoteEl&&qty>0&&price>0) quoteEl.value=cost;
 }
 function autoWeight(){
   if(!_unitWeight) return;
