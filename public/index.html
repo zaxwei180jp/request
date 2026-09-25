@@ -28,7 +28,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-tab svg{flex-shrink:0}
 
 /* HEADER */
-.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
+.sticky-top{position:sticky;top:49px;z-index:40;background:var(--card);border-bottom:.5px solid var(--border)}
+.hdr{background:var(--card);padding:14px 16px}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hdr-left h1{font-size:22px;font-weight:700}
 .hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
@@ -207,6 +208,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </a>
 </nav>
 
+<!-- STICKY HEADER WRAPPER -->
+<div class="sticky-top">
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-row">
@@ -235,6 +238,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="chips" id="chips"></div>
 <div class="chip-gap"></div>
+</div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
 <div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
