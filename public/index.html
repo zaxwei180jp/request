@@ -782,11 +782,12 @@ function openDetail(pageId){
     <div class="dc">
       <div class="dch">基本資訊</div>
       <div class="dgrid">
-        <div class="df full"><div class="df-l">商品名稱</div><input class="di" id="d_name" value="${r.name||''}"></div>
+        <div class="df"><div class="df-l">需求單編號</div><input class="di" id="d_rid" value="${r.id||''}"></div>
         <div class="df"><div class="df-l">委託人</div><input class="di" id="d_client" value="${r.client||''}"></div>
+        <div class="df full"><div class="df-l">商品名稱</div><input class="di" id="d_name" value="${r.name||''}"></div>
         <div class="df"><div class="df-l">商品編號</div><input class="di" id="d_code" value="${r.code||''}"></div>
         <div class="df"><div class="df-l">商店</div>${msel('商店',r.shop,'d_shop')}</div>
-        <div class="df"><div class="df-l">發貨客戶${r.shiptoName?` · ${r.shiptoName}`:''}</div>${mshipto(r.shipto,'d_shipto')}</div>
+        <div class="df"><div class="df-l">發貨客戶</div>${mshipto(r.shipto,'d_shipto')}</div>
         <div class="df"><div class="df-l">商品類型</div>${msel('商品類型',r.type,'d_type')}</div>
         <div class="df"><div class="df-l">購買屬性</div>${msel('購買屬性',r.attr,'d_attr')}</div>
       </div>
@@ -876,6 +877,7 @@ function closeDetail(){document.getElementById('detailOv').classList.remove('ope
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
   const r={
+    notionId:document.getElementById('d_rid').value.trim(),
     client:document.getElementById('d_client').value.trim(),
     name:document.getElementById('d_name').value.trim(),
     code:document.getElementById('d_code').value.trim(),
