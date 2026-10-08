@@ -200,6 +200,7 @@ export default async function handler(req) {
             pay:   g('ZFWL')   || '',
             ship:  g('ko~P')   || '',
             total: g('cECx')   || 0,
+            quote: g('cAk\\')  || 0,
           });
         }
         if (!data.has_more) break;
@@ -209,7 +210,7 @@ export default async function handler(req) {
       const unstarted   = results.filter(r => r.buy === '未開始').length;
       const unpaidBase  = results.filter(r => r.pay === '未付款' && r.buy !== '缺貨' && r.buy !== '不購買');
       const collecting  = results.filter(r => r.ship === '集貨中').length;
-      const unpaidAmt   = unpaidBase.reduce((s, r) => s + (Number(r.total) || 0), 0);
+      const unpaidAmt   = unpaidBase.reduce((s, r) => s + (Number(r.quote) || 0), 0);
       return json({
         total: results.length,
         unstarted,
