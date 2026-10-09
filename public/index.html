@@ -496,7 +496,7 @@ function renderStats(){
     unstarted=base.filter(r=>r.buy==='未開始').length;
     const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
     unpaid=unpaidBase.length;
-    unpaidAmt=sum(unpaidBase, r => toNumber(r.total));
+    unpaidAmt=sum(unpaidBase, r => toNumber(r.quote));
     collecting=base.filter(r=>r.ship==='集貨中').length;
     total=base.length;
   } else {
