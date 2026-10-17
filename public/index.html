@@ -901,7 +901,7 @@ async function saveDetail(){
     const d=await res.json();if(d.error)throw new Error(d.error);
     toast('✅ 已儲存');
     await new Promise(r=>setTimeout(r,1000));
-    await loadAll(true);openDetail(viewingId);
+    await loadAll(true);closeDetail();
   }catch(e){toastErr('儲存失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
