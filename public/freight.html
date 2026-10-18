@@ -380,7 +380,7 @@ async function saveNew(){
   try{
     const r=await fetch(API+'?action=freight_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.freightId} 已新增`);closeAdd();await loadAll(true);
+    toast(`✅ ${body.freightId} 已新增`);closeAdd();await loadAll(true);window.scrollTo(0,0);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
