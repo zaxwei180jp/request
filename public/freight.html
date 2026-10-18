@@ -346,6 +346,7 @@ function nextFreightId(){
 }
 async function openAdd(){
   window.scrollTo(0,0);
+  document.querySelector('#addOv .sheet').scrollTop=0;
   document.getElementById('a_id').value=nextFreightId();
   ['a_companyPrice','a_clientPrice','a_weightDiff','a_note'].forEach(id=>document.getElementById(id).value='');
   fillSel('a_companyStatus','公司狀態');fillSel('a_clientStatus','客戶狀態');

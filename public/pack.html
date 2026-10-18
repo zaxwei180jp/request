@@ -378,6 +378,7 @@ function nextPackId(){
 }
 async function openAdd(){
   window.scrollTo(0,0);
+  document.querySelector('#addOv .sheet').scrollTop=0;
   document.getElementById('a_id').value=nextPackId();
   ['a_box','a_weight','a_arrive','a_shipDate','a_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('reqSrch').value='';

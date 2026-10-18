@@ -657,6 +657,7 @@ function nextId(){
 }
 async function openAdd(){
   window.scrollTo(0,0);
+  document.querySelector('#addOv .sheet').scrollTop=0;
   await loadSchema(); // ensure latest schema
   document.getElementById('a_id').value=nextId();
   ['a_client','a_code','a_name','a_quote','a_twquote'].forEach(id=>document.getElementById(id).value='');
