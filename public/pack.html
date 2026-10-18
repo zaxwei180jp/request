@@ -377,6 +377,7 @@ function nextPackId(){
   return 'PACK'+(nums.length?Math.max(...nums)+1:1);
 }
 async function openAdd(){
+  window.scrollTo(0,0);
   document.getElementById('a_id').value=nextPackId();
   ['a_box','a_weight','a_arrive','a_shipDate','a_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('reqSrch').value='';
