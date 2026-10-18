@@ -385,6 +385,7 @@ async function openAdd(){
   selectedReqIds.clear();
   fillSel('a_seal','封箱狀態');fillSel('a_ship','發貨狀態');
   document.getElementById('addOv').classList.add('open');
+  requestAnimationFrame(()=>{ document.querySelector('#addOv .sheet').scrollTop=0; });
   document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">載入中…</div>';
   try{
     const r=await fetch(API+'?action=unlinked_reqs');
