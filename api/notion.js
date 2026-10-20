@@ -169,9 +169,17 @@ export default async function handler(req) {
         const props    = page.properties || {};
         const titleP   = Object.values(props).find(v => v.type === 'title');
         const nameP    = Object.values(props).find(v => v.id === '~zOg');
+        const coShipP  = Object.values(props).find(v => v.name === 'co_ship'  || v.id === 'co_ship');
+        const cusShipP = Object.values(props).find(v => v.name === 'cus_ship' || v.id === 'cus_ship');
         const code     = titleP?.title?.[0]?.plain_text || '';
         const name     = nameP?.rich_text?.[0]?.plain_text || '';
-        return { id: page.id, code, name };
+        return {
+          id: page.id,
+          code,
+          name,
+          co_ship:  coShipP?.number  ?? null,
+          cus_ship: cusShipP?.number ?? null,
+        };
       }).filter(r => r.code);
       return json(list);
     }
