@@ -162,6 +162,21 @@ export default async function handler(req) {
       }});
     }
 
+    // ── SHIPTO DEBUG ─────────────────────────────────────────────
+    if (action === 'shipto_debug') {
+      const results = await queryAll(DB_SHIPTO, []);
+      if (!results.length) return json({ error: 'no records' });
+      const props = results[0].properties || {};
+      // Return all property names, ids, types, and values
+      const debug = Object.entries(props).map(([name, v]) => ({
+        name,
+        id: v.id,
+        type: v.type,
+        value: v.type === 'number' ? v.number : v.type === 'title' ? v.title?.[0]?.plain_text : v.type === 'rich_text' ? v.rich_text?.[0]?.plain_text : '...',
+      }));
+      return json(debug);
+    }
+
     // ── SHIPTO LIST ──────────────────────────────────────────────
     if (action === 'shipto_list') {
       const results = await queryAll(DB_SHIPTO, []);
@@ -169,8 +184,8 @@ export default async function handler(req) {
         const props    = page.properties || {};
         const titleP   = Object.values(props).find(v => v.type === 'title');
         const nameP    = Object.values(props).find(v => v.id === '~zOg');
-        const coShipP  = Object.values(props).find(v => v.name === 'co_ship'  || v.id === 'co_ship');
-        const cusShipP = Object.values(props).find(v => v.name === 'cus_ship' || v.id === 'cus_ship');
+        const coShipP  = props['co_ship']  || Object.values(props).find(v => v.id === 'co_ship');
+        const cusShipP = props['cus_ship'] || Object.values(props).find(v => v.id === 'cus_ship');
         const code     = titleP?.title?.[0]?.plain_text || '';
         const name     = nameP?.rich_text?.[0]?.plain_text || '';
         return {
