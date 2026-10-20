@@ -361,7 +361,13 @@ async function openAdd(){
     try{const r=await fetch(API+'?action=shipto_list');const d=await r.json();shiptoListF=Array.isArray(d)?d:[];}catch(e){shiptoListF=[];}
   }
   const clientSel=document.getElementById('a_client');
-  clientSel.innerHTML='<option value="">— 選擇委託人 —</option>'+shiptoListF.map(s=>`<option value="${s.id}">${s.code} ${s.name}</option>`).join('');
+  clientSel.innerHTML='<option value="">— 選擇委託人 —</option>'+shiptoListF.map(s=>`<option value="${s.id}" data-co="${s.co_ship??''}" data-cus="${s.cus_ship??''}">${s.code} ${s.name}</option>`).join('');
+  clientSel.onchange=function(){
+    const opt=this.options[this.selectedIndex];
+    const co=opt.dataset.co;const cus=opt.dataset.cus;
+    if(co!=='')document.getElementById('a_companyPrice').value=co;
+    if(cus!=='')document.getElementById('a_clientPrice').value=cus;
+  };
   document.getElementById('addOv').classList.add('open');
   requestAnimationFrame(()=>{ document.querySelector('#addOv .sheet').scrollTop=0; });
 }
