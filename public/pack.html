@@ -23,7 +23,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
 .nav-tab{flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;gap:6px}
 .nav-tab.active{color:var(--purple);border-bottom-color:var(--purple);font-weight:700}
-.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
+.sticky-top{position:sticky;top:49px;z-index:40;background:var(--card);border-bottom:.5px solid var(--border)}
+.hdr{background:var(--card);padding:14px 16px}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hdr-left h1{font-size:22px;font-weight:700}
 .hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
@@ -160,6 +161,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     運費
   </a>
 </nav>
+<div class="sticky-top">
 <div class="hdr">
   <div class="hdr-row">
     <div class="hdr-left"><h1>出貨單</h1><p id="hdrSub">載入中…</p></div>
@@ -176,6 +178,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <div class="chips" id="chips"></div>
 <div class="chip-gap"></div>
+</div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
 <div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
@@ -227,9 +230,9 @@ let records=[],schema={};
 let statusFilters={seal:'',ship:''};
 let selectMode=false,selectedIds=new Set();
 let unlinkedReqs=[],selectedReqIds=new Set(),viewingId=null;
-let reqMap={};  // pageId -> {label, client}
-let detailReqIds=[];  // 目前詳細頁面中的需求單 pageIds（可編輯）
-let allReqsForDetail=[];  // 載入詳細頁面時的所有需求單（用於新增）
+let reqMap={};          // pageId -> {label, client}
+let detailReqIds=[];    // 詳細頁面目前的需求單 pageIds（可編輯）
+let allReqsForDetail=[]; // 詳細頁面可選的所有需求單
 
 // pack.html 特定的快取邏輯（覆蓋 shared.js）
 const PACK_CACHE_KEY='pack_cache_v1';
@@ -247,12 +250,11 @@ async function loadSchema(){
   }catch(e){}
 }
 function resolveReqLabels(){
-  // Use cached req data to resolve req IDs to labels/clients
   try{
     const raw=localStorage.getItem('req_cache_v1');
     if(!raw) return;
     const parsed=JSON.parse(raw);
-    // 快取格式可能是 {data:[...]} 或直接是 {records:[...],has_more,...}
+    // 快取格式：{ts, data:[...]} 其中每筆是 {_pageId, id:RE001, client, ...}
     const reqs=parsed?.data||parsed?.records||[];
     if(!reqs?.length) return;
     reqMap={};
@@ -379,12 +381,15 @@ function nextPackId(){
   return 'PACK'+(nums.length?Math.max(...nums)+1:1);
 }
 async function openAdd(){
+  window.scrollTo(0,0);
+  document.querySelector('#addOv .sheet').scrollTop=0;
   document.getElementById('a_id').value=nextPackId();
   ['a_box','a_weight','a_arrive','a_shipDate','a_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('reqSrch').value='';
   selectedReqIds.clear();
   fillSel('a_seal','封箱狀態');fillSel('a_ship','發貨狀態');
   document.getElementById('addOv').classList.add('open');
+  requestAnimationFrame(()=>{ document.querySelector('#addOv .sheet').scrollTop=0; });
   document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">載入中…</div>';
   try{
     const r=await fetch(API+'?action=unlinked_reqs');
@@ -431,7 +436,7 @@ async function saveNew(){
   try{
     const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadAll(true);
+    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadAll(true);window.scrollTo(0,0);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
@@ -456,7 +461,7 @@ document.addEventListener('click', e => {
 function renderDetailReqs(){
   const wrap=document.getElementById('d_reqs_edit');
   if(!wrap) return;
-  const linked=detailReqIds.map(pid=>({pid, ...( reqMap[pid]||{label:pid.slice(0,8),client:''})}));
+  const linked=detailReqIds.map(pid=>({pid,...(reqMap[pid]||{label:pid.slice(0,8),client:''})}));
   wrap.innerHTML=linked.length
     ? linked.map(item=>`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
@@ -470,16 +475,14 @@ function renderDetailReqs(){
 }
 function detailRemoveReq(pid){
   detailReqIds=detailReqIds.filter(x=>x!==pid);
-  renderDetailReqs();
-  renderDetailReqAdd();
+  renderDetailReqs();renderDetailReqAdd();
 }
 function renderDetailReqAdd(){
   const wrap=document.getElementById('d_reqs_add_list');
   if(!wrap) return;
   const q=(document.getElementById('d_reqs_srch')?.value||'').toLowerCase();
-  // 顯示「未被加入當前 detailReqIds」的需求單
   const available=allReqsForDetail.filter(r=>{
-    if(detailReqIds.includes(r._pageId||r.id)) return false;
+    if(detailReqIds.includes(r._pageId)) return false;
     if(!q) return true;
     return ((r.label||'')+(r.client||'')+(r.name||'')).toLowerCase().includes(q);
   });
@@ -492,8 +495,7 @@ function renderDetailReqAdd(){
 }
 function detailAddReq(pid){
   if(!detailReqIds.includes(pid)) detailReqIds.push(pid);
-  renderDetailReqs();
-  renderDetailReqAdd();
+  renderDetailReqs();renderDetailReqAdd();
 }
 async function openDetail(pageId){
   const r=records.find(x=>x._pageId===pageId);
@@ -534,17 +536,15 @@ async function openDetail(pageId){
     </div>`;
   document.getElementById('detailOv').classList.add('open');
   renderDetailReqs();
-  // 載入所有需求單供新增選擇
-  allReqsForDetail=[];
-  renderDetailReqAdd();
+  allReqsForDetail=[];renderDetailReqAdd();
   try{
-    // 先用快取中的需求單（快取格式：{_pageId, id:RE001, client, ...}）
+    // 先從快取初始化（格式：{ts, data:[{_pageId, id:RE001, ...}]}）
     const raw=localStorage.getItem('req_cache_v1');
     if(raw){
       const parsed=JSON.parse(raw);
       const reqs=parsed?.data||parsed?.records||[];
       if(reqs.length){
-        allReqsForDetail=reqs.map(x=>({_pageId:x._pageId, label:x.id||x.label||x._pageId.slice(0,8), name:x.name||'', client:x.client||'', estWeight:x.estWeight||0}));
+        allReqsForDetail=reqs.map(x=>({_pageId:x._pageId,label:x.id||x.label||x._pageId.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}));
         renderDetailReqAdd();
       }
     }
@@ -552,12 +552,11 @@ async function openDetail(pageId){
     const res=await fetch(API+'?action=unlinked_reqs');
     const fresh=await res.json();
     if(Array.isArray(fresh)&&fresh.length){
-      // 正規化 unlinked_reqs：_pageId = id, label = label
-      const freshNorm=fresh.map(x=>({_pageId:x.id, label:x.label||x.id.slice(0,8), name:x.name||'', client:x.client||'', estWeight:x.estWeight||0}));
-      // 補上已關聯的需求單（unlinked_reqs 只有未關聯的）
+      const freshNorm=fresh.map(x=>({_pageId:x.id,label:x.label||x.id.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}));
+      // 補上已關聯的（unlinked_reqs 不含已關聯的）
       const linkedItems=detailReqIds.map(pid=>{
         const info=reqMap[pid]||{};
-        return {_pageId:pid, label:info.label||pid.slice(0,8), name:'', client:info.client||'', estWeight:0};
+        return {_pageId:pid,label:info.label||pid.slice(0,8),name:'',client:info.client||'',estWeight:0};
       });
       const freshIds=new Set(freshNorm.map(x=>x._pageId));
       const extra=linkedItems.filter(x=>!freshIds.has(x._pageId));
@@ -569,6 +568,10 @@ async function openDetail(pageId){
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
+  const origRecord=records.find(x=>x._pageId===viewingId);
+  const origReqIds=origRecord?.reqIds||[];
+  const addedIds=detailReqIds.filter(id=>!origReqIds.includes(id));
+  const removedIds=origReqIds.filter(id=>!detailReqIds.includes(id));
   const body={
     box:document.getElementById('d_box').value.trim(),
     weight:document.getElementById('d_weight').value||0,
@@ -580,19 +583,16 @@ async function saveDetail(){
     reqIds:detailReqIds,
   };
   try{
-    const origRecord=records.find(x=>x._pageId===viewingId);
-    const origReqIds=origRecord?.reqIds||[];
-    const addedIds=detailReqIds.filter(id=>!origReqIds.includes(id));
-    const removedIds=origReqIds.filter(id=>!detailReqIds.includes(id));
-    // 儲存基本資訊
     const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    // 若需求單有變更，呼叫 pack_update_reqs
+    // 需求單有變更時同步 Notion 關聯
     if(addedIds.length||removedIds.length){
       const rr=await fetch(`${API}?action=pack_update_reqs&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reqIds:detailReqIds,addedIds,removedIds,packId:viewingId})});
       const dd=await rr.json();if(dd.error)throw new Error(dd.error);
     }
-    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
+    toast('✅ 已儲存');
+    await new Promise(r=>setTimeout(r,1000));
+    await loadAll(true);closeDetail();
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
@@ -642,7 +642,14 @@ async function batchUpdate(i){
     try{
       const body={};
       if(a.key==='seal') body.seal=a.val;
-      if(a.key==='ship') body.ship=a.val;
+      if(a.key==='ship'){
+        body.ship=a.val;
+        // ship='完成' 時帶入 reqIds，觸發 cascade 更新關聯需求單
+        if(a.val==='完成'){
+          const rec=records.find(r=>r.id===pid);
+          if(rec?.reqIds?.length) body.reqIds=rec.reqIds;
+        }
+      }
       const res=await fetch(`${API}?action=pack_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const d=await res.json();if(d.error)fail++;else ok++;
     }catch(e){fail++;}

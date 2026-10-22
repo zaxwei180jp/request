@@ -162,6 +162,21 @@ export default async function handler(req) {
       }});
     }
 
+    // ── SHIPTO DEBUG ─────────────────────────────────────────────
+    if (action === 'shipto_debug') {
+      const results = await queryAll(DB_SHIPTO, []);
+      if (!results.length) return json({ error: 'no records' });
+      const props = results[0].properties || {};
+      // Return all property names, ids, types, and values
+      const debug = Object.entries(props).map(([name, v]) => ({
+        name,
+        id: v.id,
+        type: v.type,
+        value: v.type === 'number' ? v.number : v.type === 'title' ? v.title?.[0]?.plain_text : v.type === 'rich_text' ? v.rich_text?.[0]?.plain_text : '...',
+      }));
+      return json(debug);
+    }
+
     // ── SHIPTO LIST ──────────────────────────────────────────────
     if (action === 'shipto_list') {
       const results = await queryAll(DB_SHIPTO, []);
@@ -169,20 +184,85 @@ export default async function handler(req) {
         const props    = page.properties || {};
         const titleP   = Object.values(props).find(v => v.type === 'title');
         const nameP    = Object.values(props).find(v => v.id === '~zOg');
+        const coShipP  = props['co_ship']  || Object.values(props).find(v => v.id === 'co_ship');
+        const cusShipP = props['cus_ship'] || Object.values(props).find(v => v.id === 'cus_ship');
         const code     = titleP?.title?.[0]?.plain_text || '';
         const name     = nameP?.rich_text?.[0]?.plain_text || '';
-        return { id: page.id, code, name };
+        return {
+          id: page.id,
+          code,
+          name,
+          co_ship:  coShipP?.number  ?? null,
+          cus_ship: cusShipP?.number ?? null,
+        };
       }).filter(r => r.code);
       return json(list);
     }
 
+    // ── REQ LIST STATS (全量，只取統計需要的欄位) ──────────────
+    if (action === 'list_stats') {
+      let results = [], cursor;
+      while (true) {
+        const body = {
+          page_size: 100,
+          sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+          // 只 filter properties 裡有 id 的欄位，減少回傳資料量
+        };
+        if (cursor) body.start_cursor = cursor;
+        const res = await nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
+          method: 'POST', headers: nHeaders(), body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.results) throw new Error(data.message || 'Query failed');
+        // 只保留統計需要的欄位
+        for (const page of data.results) {
+          const p = page.properties || {};
+          const g = id => val(prop(p, id));
+          results.push({
+            buy:   g('lA%3A_') || '',
+            pay:   g('ZFWL')   || '',
+            ship:  g('ko~P')   || '',
+            total: g('cECx')   || 0,
+            quote: g('cAk\\')  || 0,
+          });
+        }
+        if (!data.has_more) break;
+        cursor = data.next_cursor;
+      }
+      // 計算統計
+      const unstarted   = results.filter(r => r.buy === '未開始').length;
+      const unpaidBase  = results.filter(r => r.pay === '未付款' && r.buy !== '缺貨' && r.buy !== '不購買');
+      const collecting  = results.filter(r => r.ship === '集貨中').length;
+      const unpaidAmt   = unpaidBase.reduce((s, r) => s + (Number(r.quote) || 0), 0);
+      return json({
+        total: results.length,
+        unstarted,
+        unpaid: unpaidBase.length,
+        unpaidAmt,
+        collecting,
+      });
+    }
+
     // ── REQ LIST ────────────────────────────────────────────────
     if (action === 'list') {
-      // Fetch req pages and full shipto DB in parallel (faster than per-ID lookup)
-      const [results, shiptoResults] = await Promise.all([
-        queryAll(DB_REQ),
+      const cursor    = url.searchParams.get('cursor') || undefined;
+      const page_size = Math.min(parseInt(url.searchParams.get('limit') || '100'), 100);
+
+      // Fetch one page of req results and full shipto DB in parallel
+      const [reqRes, shiptoResults] = await Promise.all([
+        nFetch(`https://api.notion.com/v1/databases/${DB_REQ}/query`, {
+          method: 'POST', headers: nHeaders(),
+          body: JSON.stringify({
+            page_size,
+            sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+            ...(cursor ? { start_cursor: cursor } : {}),
+          }),
+        }).then(r => r.json()),
         queryAll(DB_SHIPTO, []),
       ]);
+
+      if (!reqRes.results) throw new Error(reqRes.message || 'Query failed');
+      const results = reqRes.results;
 
       // Build shipto map from full DB (one query instead of N queries)
       const shiptoMap = {};
@@ -203,7 +283,7 @@ export default async function handler(req) {
         return { label: titleP?.title?.[0]?.plain_text || '' };
       });
 
-      return json(results.map(page => {
+      const mapped = results.map(page => {
         const p = page.properties || {};
         const g = id => val(prop(p, id));
         const packRel   = prop(p, 'R_%3D%3A');
@@ -235,7 +315,12 @@ export default async function handler(req) {
           pack:       packIds_.map(r => packTitles[r.id]?.label || '').filter(Boolean).join(', '),
           _packIds:   packIds_.map(r => r.id),
         };
-      }));
+      });
+      return json({
+        records:     mapped,
+        has_more:    reqRes.has_more || false,
+        next_cursor: reqRes.next_cursor || null,
+      });
     }
 
     // ── REQ CREATE ──────────────────────────────────────────────
@@ -267,10 +352,14 @@ export default async function handler(req) {
     // ── REQ DELETE ──────────────────────────────────────────────
     if (action === 'delete') {
       const pageId = url.searchParams.get('id');
-      await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+      const delRes = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
         method: 'PATCH', headers: nHeaders(),
         body: JSON.stringify({ archived: true }),
       });
+      if (!delRes.ok) {
+        const errData = await delRes.json().catch(() => ({}));
+        return json({ ok: false, error: errData.message || `Notion error ${delRes.status}` }, 500);
+      }
       return json({ ok: true });
     }
 
@@ -652,17 +741,6 @@ export default async function handler(req) {
       return json(results);
     }
 
-    // ── PRODUCT DEBUG ─────────────────────────────────────────────
-    if (action === 'product_debug') {
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      if (!data.results?.length) return json({ error: 'No results', detail: data }, 500);
-      const props = data.results[0].properties;
-      return json(Object.fromEntries(Object.entries(props).map(([k,v])=>[k,{id:v.id,type:v.type}])));
-    }
-
     // ── DB STATS ─────────────────────────────────────────────────
     if (action === 'db_stats') {
       const results = await queryAll(DB_REQ);
@@ -739,28 +817,6 @@ export default async function handler(req) {
       }));
 
       return json({ ok: true, updated, skipped, total: needsFill.length });
-    }
-
-    // PACK TEST - fetch only 1 record
-    if (action === 'pack_test') {
-      const start = Date.now();
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
-        method: 'POST', headers: nHeaders(),
-        body: JSON.stringify({ page_size: 1 }),
-      });
-      const data = await res.json();
-      return json({ ms: Date.now()-start, count: data.results?.length, error: data.message });
-    }
-
-    // PACK TEST 10
-    if (action === 'pack_test10') {
-      const start = Date.now();
-      const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}/query`, {
-        method: 'POST', headers: nHeaders(),
-        body: JSON.stringify({ page_size: 10 }),
-      });
-      const data = await res.json();
-      return json({ ms: Date.now()-start, count: data.results?.length, has_more: data.has_more, error: data.message });
     }
 
     return json({ error: 'Unknown action' }, 400);
