@@ -23,8 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
 .nav-tab{flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;gap:6px}
 .nav-tab.active{color:var(--purple);border-bottom-color:var(--purple);font-weight:700}
-.sticky-top{position:sticky;top:49px;z-index:40;background:var(--card);border-bottom:.5px solid var(--border)}
-.hdr{background:var(--card);padding:14px 16px}
+.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hdr-left h1{font-size:22px;font-weight:700}
 .hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
@@ -161,7 +160,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     運費
   </a>
 </nav>
-<div class="sticky-top">
 <div class="hdr">
   <div class="hdr-row">
     <div class="hdr-left"><h1>出貨單</h1><p id="hdrSub">載入中…</p></div>
@@ -178,7 +176,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <div class="chips" id="chips"></div>
 <div class="chip-gap"></div>
-</div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
 <div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
@@ -230,6 +227,9 @@ let records=[],schema={};
 let statusFilters={seal:'',ship:''};
 let selectMode=false,selectedIds=new Set();
 let unlinkedReqs=[],selectedReqIds=new Set(),viewingId=null;
+let reqMap={};  // pageId -> {label, client}
+let detailReqIds=[];  // 目前詳細頁面中的需求單 pageIds（可編輯）
+let allReqsForDetail=[];  // 載入詳細頁面時的所有需求單（用於新增）
 
 // pack.html 特定的快取邏輯（覆蓋 shared.js）
 const PACK_CACHE_KEY='pack_cache_v1';
@@ -251,10 +251,12 @@ function resolveReqLabels(){
   try{
     const raw=localStorage.getItem('req_cache_v1');
     if(!raw) return;
-    const {data:reqs}=JSON.parse(raw);
+    const parsed=JSON.parse(raw);
+    // 快取格式可能是 {data:[...]} 或直接是 {records:[...],has_more,...}
+    const reqs=parsed?.data||parsed?.records||[];
     if(!reqs?.length) return;
-    const reqMap={};
-    reqs.forEach(r=>{ if(r._pageId) reqMap[r._pageId]={label:r.id,client:r.client||''}; });
+    reqMap={};
+    reqs.forEach(r=>{ if(r._pageId) reqMap[r._pageId]={label:r.id||r.label||'',client:r.client||''}; });
     records=records.map(r=>{
       const ids=r.reqIds||[];
       const labels=ids.map(id=>reqMap[id]?.label||'').filter(Boolean);
@@ -377,15 +379,12 @@ function nextPackId(){
   return 'PACK'+(nums.length?Math.max(...nums)+1:1);
 }
 async function openAdd(){
-  window.scrollTo(0,0);
-  document.querySelector('#addOv .sheet').scrollTop=0;
   document.getElementById('a_id').value=nextPackId();
   ['a_box','a_weight','a_arrive','a_shipDate','a_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('reqSrch').value='';
   selectedReqIds.clear();
   fillSel('a_seal','封箱狀態');fillSel('a_ship','發貨狀態');
   document.getElementById('addOv').classList.add('open');
-  requestAnimationFrame(()=>{ document.querySelector('#addOv .sheet').scrollTop=0; });
   document.getElementById('reqList').innerHTML='<div style="text-align:center;color:var(--hint);padding:20px">載入中…</div>';
   try{
     const r=await fetch(API+'?action=unlinked_reqs');
@@ -432,7 +431,7 @@ async function saveNew(){
   try{
     const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadAll(true);window.scrollTo(0,0);
+    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadAll(true);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
@@ -454,10 +453,53 @@ document.addEventListener('click', e => {
     if (field && label) cycleStatus(btn.id || '', label);
   }
 });
-function openDetail(pageId){
+function renderDetailReqs(){
+  const wrap=document.getElementById('d_reqs_edit');
+  if(!wrap) return;
+  const linked=detailReqIds.map(pid=>({pid, ...( reqMap[pid]||{label:pid.slice(0,8),client:''})}));
+  wrap.innerHTML=linked.length
+    ? linked.map(item=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <span style="font-size:14px;font-weight:700;color:var(--purple)">${item.label}</span>
+            ${item.client?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${item.client}</span>`:''}
+          </div>
+          <button onclick="detailRemoveReq('${item.pid}')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px" title="移除">✕</button>
+        </div>`).join('')
+    : '<div style="color:var(--hint);font-size:13px;padding:8px 0">尚未關聯需求單</div>';
+}
+function detailRemoveReq(pid){
+  detailReqIds=detailReqIds.filter(x=>x!==pid);
+  renderDetailReqs();
+  renderDetailReqAdd();
+}
+function renderDetailReqAdd(){
+  const wrap=document.getElementById('d_reqs_add_list');
+  if(!wrap) return;
+  const q=(document.getElementById('d_reqs_srch')?.value||'').toLowerCase();
+  // 顯示「未被加入當前 detailReqIds」的需求單
+  const available=allReqsForDetail.filter(r=>{
+    if(detailReqIds.includes(r._pageId||r.id)) return false;
+    if(!q) return true;
+    return ((r.label||'')+(r.client||'')+(r.name||'')).toLowerCase().includes(q);
+  });
+  if(!available.length){wrap.innerHTML='<div style="text-align:center;color:var(--hint);padding:12px;font-size:13px">沒有可新增的需求單</div>';return;}
+  wrap.innerHTML=available.map(r=>`
+    <div class="req-item" onclick="detailAddReq('${r._pageId}')" style="cursor:pointer">
+      <div style="font-size:14px;font-weight:700;color:var(--purple)">${r.label}</div>
+      <div style="font-size:12px;color:var(--muted)">${r.client||''}${r.name?' · '+String(r.name).slice(0,20):''}${r.estWeight?` · ${Number(r.estWeight).toFixed(1)}KG`:''}</div>
+    </div>`).join('');
+}
+function detailAddReq(pid){
+  if(!detailReqIds.includes(pid)) detailReqIds.push(pid);
+  renderDetailReqs();
+  renderDetailReqAdd();
+}
+async function openDetail(pageId){
   const r=records.find(x=>x._pageId===pageId);
   if(!r){toast('找不到資料');return;}
   saveScroll();viewingId=pageId;
+  detailReqIds=[...(r.reqIds||[])];
   document.getElementById('dId').textContent=r.id||'—';
   document.getElementById('dbody').innerHTML=`
     <div class="dc">
@@ -467,7 +509,6 @@ function openDetail(pageId){
         <div class="df"><div class="df-l">重量 KG</div><input class="di" id="d_weight" type="number" value="${r.weight||0}"></div>
         <div class="df"><div class="df-l">預計到貨日期</div><input class="di" id="d_arrive" type="date" value="${r.arrive||''}"></div>
         <div class="df"><div class="df-l">出貨日期</div><input class="di" id="d_shipDate" type="date" value="${r.shipDate||''}"></div>
-        <div class="df full"><div class="df-l">需求單數</div><span style="font-size:16px;font-weight:600">${r.reqCount||0} 筆</span></div>
         <div class="df full" style="border-bottom:none"><div class="df-l">預估重量</div><span style="font-size:20px;font-weight:700;color:var(--purple)">${r.estWeight||0} KG</span></div>
       </div>
     </div>
@@ -479,12 +520,12 @@ function openDetail(pageId){
       </div>
     </div>
     <div class="dc">
-      <div class="dch">需求單（${(r.reqIds||[]).length} 筆）</div>
-      <div class="reqs-wrap" id="d_reqs_display">
-        ${(r.reqIds||[]).length ? (r.reqIds).map((id,i)=>{
-          const label=r.reqs?.[i]||id.slice(0,8);
-          return `<span class="req-tag">${label}</span>`;
-        }).join('') : '<span style="color:var(--hint);font-size:13px;padding:4px">尚未關聯需求單</span>'}
+      <div class="dch">需求單</div>
+      <div style="padding:8px 0 4px" id="d_reqs_edit"></div>
+      <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:10px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">＋ 新增需求單</div>
+        <input id="d_reqs_srch" class="di" placeholder="搜尋需求單…" oninput="renderDetailReqAdd()" style="margin-bottom:8px">
+        <div id="d_reqs_add_list" style="max-height:180px;overflow-y:auto"><div style="text-align:center;color:var(--hint);padding:12px;font-size:13px">載入中…</div></div>
       </div>
     </div>
     <div class="dc">
@@ -492,11 +533,42 @@ function openDetail(pageId){
       <div class="dgrid"><div class="df full" style="border-bottom:none"><textarea class="di" id="d_note" rows="3" style="height:80px">${r.note||''}</textarea></div></div>
     </div>`;
   document.getElementById('detailOv').classList.add('open');
+  renderDetailReqs();
+  // 載入所有需求單供新增選擇
+  allReqsForDetail=[];
+  renderDetailReqAdd();
+  try{
+    // 先用快取中的需求單（快取格式：{_pageId, id:RE001, client, ...}）
+    const raw=localStorage.getItem('req_cache_v1');
+    if(raw){
+      const parsed=JSON.parse(raw);
+      const reqs=parsed?.data||parsed?.records||[];
+      if(reqs.length){
+        allReqsForDetail=reqs.map(x=>({_pageId:x._pageId, label:x.id||x.label||x._pageId.slice(0,8), name:x.name||'', client:x.client||'', estWeight:x.estWeight||0}));
+        renderDetailReqAdd();
+      }
+    }
+    // 再從 API 取最新 unlinked_reqs（格式：{id:pageId, label:RE001, ...}）
+    const res=await fetch(API+'?action=unlinked_reqs');
+    const fresh=await res.json();
+    if(Array.isArray(fresh)&&fresh.length){
+      // 正規化 unlinked_reqs：_pageId = id, label = label
+      const freshNorm=fresh.map(x=>({_pageId:x.id, label:x.label||x.id.slice(0,8), name:x.name||'', client:x.client||'', estWeight:x.estWeight||0}));
+      // 補上已關聯的需求單（unlinked_reqs 只有未關聯的）
+      const linkedItems=detailReqIds.map(pid=>{
+        const info=reqMap[pid]||{};
+        return {_pageId:pid, label:info.label||pid.slice(0,8), name:'', client:info.client||'', estWeight:0};
+      });
+      const freshIds=new Set(freshNorm.map(x=>x._pageId));
+      const extra=linkedItems.filter(x=>!freshIds.has(x._pageId));
+      allReqsForDetail=[...freshNorm,...extra];
+      renderDetailReqAdd();
+    }
+  }catch(e){}
 }
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
-  const r=records.find(x=>x._pageId===viewingId);
   const body={
     box:document.getElementById('d_box').value.trim(),
     weight:document.getElementById('d_weight').value||0,
@@ -505,14 +577,22 @@ async function saveDetail(){
     ship:document.getElementById('d_ship').dataset.val||'',
     note:document.getElementById('d_note').value.trim(),
     shipDate:document.getElementById('d_shipDate').value,
-    reqIds:r?.reqIds||[],
+    reqIds:detailReqIds,
   };
   try{
+    const origRecord=records.find(x=>x._pageId===viewingId);
+    const origReqIds=origRecord?.reqIds||[];
+    const addedIds=detailReqIds.filter(id=>!origReqIds.includes(id));
+    const removedIds=origReqIds.filter(id=>!detailReqIds.includes(id));
+    // 儲存基本資訊
     const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');
-    await new Promise(r=>setTimeout(r,1000));
-    await loadAll(true);closeDetail();
+    // 若需求單有變更，呼叫 pack_update_reqs
+    if(addedIds.length||removedIds.length){
+      const rr=await fetch(`${API}?action=pack_update_reqs&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reqIds:detailReqIds,addedIds,removedIds,packId:viewingId})});
+      const dd=await rr.json();if(dd.error)throw new Error(dd.error);
+    }
+    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
@@ -562,14 +642,7 @@ async function batchUpdate(i){
     try{
       const body={};
       if(a.key==='seal') body.seal=a.val;
-      if(a.key==='ship'){
-        body.ship=a.val;
-        // ship='完成' 時帶入 reqIds，觸發 cascade 更新關聯需求單
-        if(a.val==='完成'){
-          const rec=records.find(r=>r.id===pid);
-          if(rec?.reqIds?.length) body.reqIds=rec.reqIds;
-        }
-      }
+      if(a.key==='ship') body.ship=a.val;
       const res=await fetch(`${API}?action=pack_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const d=await res.json();if(d.error)fail++;else ok++;
     }catch(e){fail++;}
