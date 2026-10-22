@@ -24,8 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
 .nav-tab{flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;gap:6px}
 .nav-tab.active{color:var(--purple);border-bottom-color:var(--purple);font-weight:700}
-.sticky-top{position:sticky;top:49px;z-index:40;background:var(--card);border-bottom:.5px solid var(--border)}
-.hdr{background:var(--card);padding:14px 16px}
+.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hdr-left h1{font-size:22px;font-weight:700}
 .hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
@@ -156,7 +155,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     運費
   </span>
 </nav>
-<div class="sticky-top">
 <div class="hdr">
   <div class="hdr-row">
     <div class="hdr-left"><h1>貨物運費</h1><p id="hdrSub">載入中…</p></div>
@@ -173,7 +171,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 <div class="chips" id="chips"></div>
 <div class="chip-gap"></div>
-</div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
 <div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
@@ -345,8 +342,6 @@ function nextFreightId(){
   return 'M'+String(nums.length?Math.max(...nums)+1:1).padStart(3,'0');
 }
 async function openAdd(){
-  window.scrollTo(0,0);
-  document.querySelector('#addOv .sheet').scrollTop=0;
   document.getElementById('a_id').value=nextFreightId();
   ['a_companyPrice','a_clientPrice','a_weightDiff','a_note'].forEach(id=>document.getElementById(id).value='');
   fillSel('a_companyStatus','公司狀態');fillSel('a_clientStatus','客戶狀態');
@@ -357,17 +352,12 @@ async function openAdd(){
   }catch(e){packListF=[];}
   const packSel=document.getElementById('a_pack');
   packSel.innerHTML='<option value="">— 選擇出貨單 —</option>'+packListF.map(p=>`<option value="${p.id}">${p.label}${p.box?' ('+p.box+')':''}</option>`).join('');
-  try{const r=await fetch(API+'?action=shipto_list');const d=await r.json();shiptoListF=Array.isArray(d)?d:[];}catch(e){shiptoListF=shiptoListF.length?shiptoListF:[];}
+  if(!shiptoListF.length){
+    try{const r=await fetch(API+'?action=shipto_list');const d=await r.json();shiptoListF=Array.isArray(d)?d:[];}catch(e){shiptoListF=[];}
+  }
   const clientSel=document.getElementById('a_client');
-  clientSel.innerHTML='<option value="">— 選擇委託人 —</option>'+shiptoListF.map(s=>`<option value="${s.id}" data-co="${s.co_ship??''}" data-cus="${s.cus_ship??''}">${s.code} ${s.name}</option>`).join('');
-  clientSel.onchange=function(){
-    const opt=this.options[this.selectedIndex];
-    const co=opt.dataset.co;const cus=opt.dataset.cus;
-    if(co!=='')document.getElementById('a_companyPrice').value=co;
-    if(cus!=='')document.getElementById('a_clientPrice').value=cus;
-  };
+  clientSel.innerHTML='<option value="">— 選擇委託人 —</option>'+shiptoListF.map(s=>`<option value="${s.id}">${s.code} ${s.name}</option>`).join('');
   document.getElementById('addOv').classList.add('open');
-  requestAnimationFrame(()=>{ document.querySelector('#addOv .sheet').scrollTop=0; });
 }
 function closeAdd(){document.getElementById('addOv').classList.remove('open');}
 async function saveNew(){
@@ -387,7 +377,7 @@ async function saveNew(){
   try{
     const r=await fetch(API+'?action=freight_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.freightId} 已新增`);closeAdd();await loadAll(true);window.scrollTo(0,0);
+    toast(`✅ ${body.freightId} 已新增`);closeAdd();await loadAll(true);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
@@ -451,9 +441,7 @@ async function saveDetail(){
   try{
     const r=await fetch(`${API}?action=freight_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');
-    await new Promise(r=>setTimeout(r,1000));
-    await loadAll(true);closeDetail();
+    toast('✅ 已儲存');await loadAll(true);openDetail(viewingId);
   }catch(e){toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }

@@ -109,7 +109,7 @@ function badge(s, statusMap = STATUS_MAP_FULL) {
  * @returns {string} class
  */
 function scls(s, statusMap = STATUS_MAP_FULL) {
-  const defaultClass = 'b-def';
+  const defaultClass = statusMap === STATUS_MAP_PACK ? 'b-def' : 'b-def';
   return statusMap[s] || defaultClass;
 }
 

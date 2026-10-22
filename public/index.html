@@ -28,8 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-tab svg{flex-shrink:0}
 
 /* HEADER */
-.sticky-top{position:sticky;top:49px;z-index:40;background:var(--card);border-bottom:.5px solid var(--border)}
-.hdr{background:var(--card);padding:14px 16px}
+.hdr{background:var(--card);border-bottom:.5px solid var(--border);padding:14px 16px}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hdr-left h1{font-size:22px;font-weight:700}
 .hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
@@ -182,7 +181,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sbtn.b-def{background:var(--bg2);color:var(--muted)}
 .d-ro{font-size:16px;font-weight:600;color:var(--muted)}
 .d-big{font-size:22px;font-weight:700;color:var(--purple)}
-.d-big-input{font-size:22px;font-weight:700;color:var(--purple)}
 .ddel{padding:0 16px 30px}
 .btn-del{width:100%;background:#F0E8E8;border:.5px solid #F7C1C1;border-radius:var(--rs);padding:15px;font-size:16px;cursor:pointer;color:#8A4444;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
 </style>
@@ -208,8 +206,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </a>
 </nav>
 
-<!-- STICKY HEADER WRAPPER -->
-<div class="sticky-top">
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-row">
@@ -229,7 +225,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="srch">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input type="text" id="srchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll();document.getElementById('srchClear').style.display=this.value?'':'none'">
+    <input type="text" id="srchInput" placeholder="搜尋編號、商品、委託人…" oninput="renderAll();document.getElementById('srchClear').style.display=this.value?'':' none'">
     <button id="srchClear" onclick="clearSearch()" style="display:none;background:none;border:none;cursor:pointer;color:var(--hint);padding:2px;line-height:0">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
     </button>
@@ -238,7 +234,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="chips" id="chips"></div>
 <div class="chip-gap"></div>
-</div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
 <div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
@@ -320,11 +315,6 @@ let records=[],schema={},shiptoList=[];
 let activeFilter='all',statusFilters={buy:'',pay:'',ship:''};
 let selectMode=false,selectedIds=new Set(),viewingId=null;
 
-// 分頁狀態
-let _nextCursor=null,_hasMore=false,_loadingMore=false;
-// 全量統計（背景載入）
-let _globalStats=null;
-
 async function loadSchema(){
   try{
     const r=await fetch(API+'?action=schema',{cache:'no-store'});
@@ -341,95 +331,39 @@ async function loadShipto(){
     if(Array.isArray(d)){shiptoList=d;localStorage.setItem(STORAGE_KEYS.SHIPTO,JSON.stringify(d));}
   }catch(e){shiptoList=[];}
 }
-
-// 背景載入全量統計，不阻塞主畫面
-async function loadStats(){
-  try{
-    const r=await fetch(API+'?action=list_stats');
-    const d=await r.json();
-    if(!d.error){
-      _globalStats=d;
-      renderStats(); // 更新 stats bar
-      const sub=document.getElementById('hdrSub');
-      if(sub&&!sub.textContent.includes('失敗'))
-        sub.textContent=`共 ${d.total} 筆 · ${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})} 同步`;
-    }
-  }catch(e){}
-}
-
 async function loadRecords(silent=false){
   if(!silent) lbar(30);
-  _nextCursor=null; _hasMore=false;
   try{
-    const r=await fetch(API+'?action=list&limit=100');
+    const r=await fetch(API+'?action=list');
     if(!silent) lbar(80);
     const d=await r.json();
     if(d.error) throw new Error(d.error);
-    records=d.records||[];
-    _nextCursor=d.next_cursor||null;
-    _hasMore=d.has_more||false;
-    saveCache({records,cursor:_nextCursor,hasMore:_hasMore});
+    records=d;
+    saveCache(d);
     if(!silent) lbar(100);
     const now=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
-    document.getElementById('hdrSub').textContent=`顯示 ${records.length} 筆${_hasMore?' · 載入中…':''} · ${now}`;
+    document.getElementById('hdrSub').textContent=`共 ${records.length} 筆 · ${now} 同步`;
   }catch(e){
     if(!silent){lbar(100);toastErr('資料載入失敗',e);}
     document.getElementById('hdrSub').textContent='載入失敗';
   }
 }
-
-async function loadMore(){
-  if(_loadingMore||!_hasMore||!_nextCursor) return;
-  _loadingMore=true;
-  try{
-    const r=await fetch(`${API}?action=list&limit=100&cursor=${encodeURIComponent(_nextCursor)}`);
-    const d=await r.json();
-    if(d.error) throw new Error(d.error);
-    const newRecs=d.records||[];
-    records=[...records,...newRecs];
-    _nextCursor=d.next_cursor||null;
-    _hasMore=d.has_more||false;
-    saveCache({records,cursor:_nextCursor,hasMore:_hasMore});
-    renderList(); // 只更新列表，不動 stats
-    const sub=document.getElementById('hdrSub');
-    if(sub) sub.textContent=`顯示 ${records.length} 筆${_hasMore?' · 更多…':'（全部）'} · 剛剛`;
-  }catch(e){toastErr('載入更多失敗',e);}
-  finally{_loadingMore=false;}
-}
-
-// 捲動偵測：捲到底時自動載入下一頁
-function setupInfiniteScroll(){
-  window.addEventListener('scroll',()=>{
-    if(_loadingMore||!_hasMore) return;
-    const scrolled=window.scrollY+window.innerHeight;
-    const total=document.body.scrollHeight;
-    if(scrolled>=total-300) loadMore();
-  },{passive:true});
-}
-
 async function loadAll(force=false){
   if(force){
+    // Clear all caches on manual refresh
     ['schema_req_v1','schema_pack_v1','schema_freight_v1','shipto_v1',
      'req_cache_v1','pack_cache_v1','freight_cache_v1'].forEach(k=>localStorage.removeItem(k));
-    _globalStats=null;
   }
   if(!force){
     const cached=loadCache();
     if(cached){
-      // 支援新格式（物件）和舊格式（陣列）
-      if(Array.isArray(cached)){
-        records=cached; _hasMore=false; _nextCursor=null;
-      } else {
-        records=cached.records||[]; _hasMore=cached.hasMore||false; _nextCursor=cached.cursor||null;
-      }
+      records=cached;
       renderAll();
-      document.getElementById('hdrSub').textContent=`顯示 ${records.length} 筆${_hasMore?' · 快取中…':''} · 快取中…`;
+      document.getElementById('hdrSub').textContent=`共 ${cached.length} 筆 · 快取中…`;
     }
   }
   await Promise.allSettled([loadSchema(),loadShipto(),loadRecords(false)]);
   renderAll();
-  // 背景載入全量統計（不阻塞主流程）
-  loadStats();
 }
 
 function clearSearch(){
@@ -475,40 +409,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const span = e.target.closest('.chip');
     if (span) toggleChip(span.dataset.k, span.dataset.v);
   });
-  document.getElementById('statsBar').addEventListener('click', e => {
-    const stat = e.target.closest('.stat[data-filter-k]');
-    if (stat) {
-      const k = stat.dataset.filterK;
-      if (k) setFilter(k);
-    }
-  });
-  setupInfiniteScroll();
 });
 function toggleChip(k,v){if(!k||!v)return;statusFilters[k]=statusFilters[k]===v?'':v;renderAll();}
 
 function renderStats(){
   const base=baseFiltered();
   const q=document.getElementById('srchInput').value.trim();
-  const hasFilter=q||statusFilters.buy||statusFilters.pay||statusFilters.ship;
-  // 有搜尋/篩選時用目前 records 計算（局部）；否則優先用全量統計
-  let unstarted,unpaid,unpaidAmt,collecting,total;
-  if(hasFilter||!_globalStats){
-    unstarted=base.filter(r=>r.buy==='未開始').length;
-    const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
-    unpaid=unpaidBase.length;
-    unpaidAmt=sum(unpaidBase, r => toNumber(r.quote));
-    collecting=base.filter(r=>r.ship==='集貨中').length;
-    total=base.length;
-  } else {
-    // 使用全量統計數字（正確）
-    unstarted=_globalStats.unstarted;
-    unpaid=_globalStats.unpaid;
-    unpaidAmt=_globalStats.unpaidAmt;
-    collecting=_globalStats.collecting;
-    total=_globalStats.total;
-  }
+  const unstarted=base.filter(r=>r.buy==='未開始').length;
+  const unpaidBase=base.filter(r=>r.pay==='未付款'&&r.buy!=='缺貨'&&r.buy!=='不購買');
+  const unpaid=unpaidBase.length;
+  const unpaidAmt=sum(unpaidBase, r => toNumber(r.total));
+  const collecting=base.filter(r=>r.ship==='集貨中').length;
   const items=[
-    {k:'all',n:total,l:q?`${base.length} 筆`:'總筆數'},
+    {k:'all',n:base.length,l:q?`${base.length} 筆`:'總筆數'},
     {k:'buy_未開始',n:unstarted,l:'購買未開始'},
     {k:'pay_未付款',n:unpaid,l:'未付款',s:'¥'+unpaidAmt.toLocaleString()},
     {k:'ship_集貨中',n:collecting,l:'發貨集貨中'},
@@ -519,6 +432,14 @@ function renderStats(){
       ${i.s?`<div class="stat-s">${i.s}</div>`:''}
       <div class="stat-l">${i.l}</div>
     </div>`).join('');
+  // 事件委派
+  document.getElementById('statsBar').addEventListener('click', e => {
+    const stat = e.target.closest('.stat[data-filter-k]');
+    if (stat) {
+      const k = stat.dataset.filterK;
+      if (k) setFilter(k);
+    }
+  });
 }
 function setFilter(k){activeFilter=k;renderAll();}
 
@@ -576,7 +497,7 @@ function renderList(){
         </div>
       </div>
       <div>
-        <span class="card-price">${r.twQuote?'$'+Number(r.twQuote).toLocaleString()+' / ¥'+Number(r.quote||0).toLocaleString():(r.quote?'¥'+Number(r.quote).toLocaleString():'')}</span>
+        <span class="card-price">${r.twQuote?'$'+Number(r.twQuote).toLocaleString():(r.total?'¥'+Number(r.total).toLocaleString():(r.price&&r.qty?'¥'+(Number(r.price)*Number(r.qty)).toLocaleString():''))}</span>
         <div class="card-name">${r.name||'（未填商品）'}</div>
       </div>
       <div class="bricks">
@@ -656,7 +577,6 @@ function nextId(){
   return 'RE'+(nums.length?Math.max(...nums)+1:1);
 }
 async function openAdd(){
-  window.scrollTo(0,0);
   await loadSchema(); // ensure latest schema
   document.getElementById('a_id').value=nextId();
   ['a_client','a_code','a_name','a_quote','a_twquote'].forEach(id=>document.getElementById(id).value='');
@@ -683,7 +603,6 @@ async function openAdd(){
   if(shiptoOpt) document.getElementById('a_shipto').value=shiptoOpt.value;
 
   document.getElementById('addOv').classList.add('open');
-  requestAnimationFrame(()=>{ document.querySelector('#addOv .sheet').scrollTop=0; });
 }
 
 function setSelVal(id, val){
@@ -753,7 +672,7 @@ async function saveNew(){
   try{
     const res=await fetch(API+'?action=create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已新增');closeAdd();await new Promise(r=>setTimeout(r,1500));await loadAll(true);window.scrollTo(0,0);
+    toast('✅ 已新增');closeAdd();await new Promise(r=>setTimeout(r,1500));await loadAll(true);
   }catch(e){toastErr('新增失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
@@ -784,12 +703,11 @@ function openDetail(pageId){
     <div class="dc">
       <div class="dch">基本資訊</div>
       <div class="dgrid">
-        <div class="df"><div class="df-l">需求單編號</div><input class="di" id="d_rid" value="${r.id||''}"></div>
-        <div class="df"><div class="df-l">委託人</div><input class="di" id="d_client" value="${r.client||''}"></div>
         <div class="df full"><div class="df-l">商品名稱</div><input class="di" id="d_name" value="${r.name||''}"></div>
+        <div class="df"><div class="df-l">委託人</div><input class="di" id="d_client" value="${r.client||''}"></div>
         <div class="df"><div class="df-l">商品編號</div><input class="di" id="d_code" value="${r.code||''}"></div>
         <div class="df"><div class="df-l">商店</div>${msel('商店',r.shop,'d_shop')}</div>
-        <div class="df"><div class="df-l">發貨客戶</div>${mshipto(r.shipto,'d_shipto')}</div>
+        <div class="df"><div class="df-l">發貨客戶${r.shiptoName?` · ${r.shiptoName}`:''}</div>${mshipto(r.shipto,'d_shipto')}</div>
         <div class="df"><div class="df-l">商品類型</div>${msel('商品類型',r.type,'d_type')}</div>
         <div class="df"><div class="df-l">購買屬性</div>${msel('購買屬性',r.attr,'d_attr')}</div>
       </div>
@@ -806,11 +724,11 @@ function openDetail(pageId){
     <div class="dc">
       <div class="dch">金額</div>
       <div class="dgrid">
-        <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}" oninput="detailAutoQuote()"></div>
-        <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}" oninput="detailAutoQuote()"></div>
-        <div class="df"><div class="df-l">報價 ¥</div><input class="di d-big-input" id="d_quote" type="number" value="${Number(r.quote||0)}"></div>
-        <div class="df"><div class="df-l">報價台幣 $</div><input class="di d-big-input" id="d_twquote" type="number" value="${Number(r.twQuote||0)}"></div>
-        <div class="df full" style="border-bottom:none"><div class="df-l">成本總價</div><span class="d-big" id="d_total_disp">¥${total}</span></div>
+        <div class="df"><div class="df-l">數量</div><input class="di" id="d_qty" type="number" value="${r.qty||0}"></div>
+        <div class="df"><div class="df-l">¥ 單價</div><input class="di" id="d_price" type="number" value="${r.price||0}"></div>
+        <div class="df"><div class="df-l">報價 ¥</div><input class="di" id="d_quote" type="number" value="${r.quote||0}"></div>
+        <div class="df"><div class="df-l">報價台幣 $</div><input class="di" id="d_twquote" type="number" value="${r.twQuote||0}"></div>
+        <div class="df full" style="border-bottom:none"><div class="df-l">總價</div><span class="d-big">¥${total}</span></div>
         <div class="df full" style="border-bottom:none"><div class="df-l">預估重量 (KG)</div><input class="di" id="d_estWeight" type="number" step="0.01" value="${r.estWeight||0}"></div>
       </div>
     </div>
@@ -879,7 +797,6 @@ function closeDetail(){document.getElementById('detailOv').classList.remove('ope
 async function saveDetail(){
   const btn=document.getElementById('btnSave');btn.disabled=true;btn.textContent='儲存中…';
   const r={
-    notionId:document.getElementById('d_rid').value.trim(),
     client:document.getElementById('d_client').value.trim(),
     name:document.getElementById('d_name').value.trim(),
     code:document.getElementById('d_code').value.trim(),
@@ -901,9 +818,7 @@ async function saveDetail(){
   try{
     const res=await fetch(`${API}?action=update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');
-    await new Promise(r=>setTimeout(r,1000));
-    await loadAll(true);closeDetail();
+    await loadAll(true);openDetail(viewingId);setTimeout(()=>toast('✅ 已儲存'),100);
   }catch(e){toastErr('儲存失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
@@ -920,17 +835,6 @@ function autoQuote(){
   const qty=Number(document.getElementById('a_qty').value)||0;
   const price=Number(document.getElementById('a_price').value)||0;
   if(qty>0&&price>0) document.getElementById('a_quote').value=qty*price;
-}
-function detailAutoQuote(){
-  const qty=Number(document.getElementById('d_qty').value)||0;
-  const price=Number(document.getElementById('d_price').value)||0;
-  // 成本總價（唯讀顯示）
-  const cost=qty*price;
-  const disp=document.getElementById('d_total_disp');
-  if(disp) disp.textContent='¥'+cost.toLocaleString();
-  // 報價自動帶入（只在報價還沒被手動修改過時更新）
-  const quoteEl=document.getElementById('d_quote');
-  if(quoteEl&&qty>0&&price>0) quoteEl.value=cost;
 }
 function autoWeight(){
   if(!_unitWeight) return;
