@@ -525,9 +525,15 @@ function detailAddReq(pid){
   if(!detailReqIds.includes(pid)) detailReqIds.push(pid);
   renderDetailReqs();renderDetailReqAdd();
 }
+let openingDetail=false;
 async function openDetail(pageId){
+  if(openingDetail) return;  // 防止讀取中重複點擊
   const r=records.find(x=>x._pageId===pageId);
   if(!r){toast('找不到資料');return;}
+  openingDetail=true;lbar(30);
+  // 讀取中讓被點的卡片變淡，表示正在開啟
+  const tapped=document.querySelector(`.card[onclick*="${pageId}"]`);
+  if(tapped) tapped.style.opacity='.5';
   saveScroll();viewingId=pageId;
   detailReqIds=[...(r.reqIds||[])];
   // 每次開啟時重建 reqMap，確保即使 resolveReqLabels 當時沒跑成功也能正確顯示
@@ -539,6 +545,37 @@ async function openDetail(pageId){
       reqs.forEach(x=>{ if(x._pageId) reqMap[x._pageId]={label:x.id||x.label||'',client:x.client||''}; });
     }
   }catch(e){}
+  // 先讀取完需求單資料，再顯示畫面（避免先出現 page id 再跳成編號）
+  allReqsForDetail=[];
+  try{
+    // 同時拉：未關聯需求單 + 依 ID 直接查詢已關聯需求單
+    const ids=detailReqIds.join(',');
+    const [resUnlinked, resLinked] = await Promise.all([
+      fetch(API+'?action=unlinked_reqs'),
+      ids ? fetch(API+'?action=reqs_by_ids&ids='+encodeURIComponent(ids)) : Promise.resolve(null),
+    ]);
+    const fresh=await resUnlinked.json();
+    const linked=resLinked ? await resLinked.json() : [];
+    // reqs_by_ids 格式：{id:pageId, label:RE001, name, client, estWeight}
+    const allReqsNorm=Array.isArray(linked)
+      ? linked.map(x=>({_pageId:x.id,label:x.label||'',name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
+      : [];
+    allReqsNorm.forEach(x=>{ if(x._pageId) reqMap[x._pageId]={label:x.label,client:x.client}; });
+
+    // unlinked_reqs 格式：{id:pageId, label:RE001, name, client, ...}
+    const freshNorm=Array.isArray(fresh)
+      ? fresh.map(x=>({_pageId:x.id,label:x.label||x.id.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
+      : [];
+
+    // 合併：以完整 allReqs 為主，unlinked_reqs 不含已關聯的所以兩者聯集
+    const allMap=Object.fromEntries(allReqsNorm.map(x=>[x._pageId,x]));
+    freshNorm.forEach(x=>{ if(!allMap[x._pageId]) allMap[x._pageId]=x; });
+    allReqsForDetail=Object.values(allMap);
+
+  }catch(e){}
+  lbar(100);openingDetail=false;
+  if(tapped) tapped.style.opacity='';
+  if(viewingId!==pageId) return;
   document.getElementById('dId').textContent=r.id||'—';
   document.getElementById('dbody').innerHTML=`
     <div class="dc">
@@ -571,37 +608,8 @@ async function openDetail(pageId){
       <div class="dch">備註</div>
       <div class="dgrid"><div class="df full" style="border-bottom:none"><textarea class="di" id="d_note" rows="3" style="height:80px">${r.note||''}</textarea></div></div>
     </div>`;
+  renderDetailReqs();renderDetailReqAdd();
   document.getElementById('detailOv').classList.add('open');
-  renderDetailReqs();
-  allReqsForDetail=[];renderDetailReqAdd();
-  try{
-    // 同時拉：未關聯需求單 + 依 ID 直接查詢已關聯需求單
-    const ids=detailReqIds.join(',');
-    const [resUnlinked, resLinked] = await Promise.all([
-      fetch(API+'?action=unlinked_reqs'),
-      ids ? fetch(API+'?action=reqs_by_ids&ids='+encodeURIComponent(ids)) : Promise.resolve(null),
-    ]);
-    const fresh=await resUnlinked.json();
-    const linked=resLinked ? await resLinked.json() : [];
-    // reqs_by_ids 格式：{id:pageId, label:RE001, name, client, estWeight}
-    const allReqsNorm=Array.isArray(linked)
-      ? linked.map(x=>({_pageId:x.id,label:x.label||'',name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
-      : [];
-    allReqsNorm.forEach(x=>{ if(x._pageId) reqMap[x._pageId]={label:x.label,client:x.client}; });
-
-    // unlinked_reqs 格式：{id:pageId, label:RE001, name, client, ...}
-    const freshNorm=Array.isArray(fresh)
-      ? fresh.map(x=>({_pageId:x.id,label:x.label||x.id.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
-      : [];
-
-    // 合併：以完整 allReqs 為主，unlinked_reqs 不含已關聯的所以兩者聯集
-    const allMap=Object.fromEntries(allReqsNorm.map(x=>[x._pageId,x]));
-    freshNorm.forEach(x=>{ if(!allMap[x._pageId]) allMap[x._pageId]=x; });
-    allReqsForDetail=Object.values(allMap);
-
-    renderDetailReqs();   // 此時 allReqsForDetail 有完整資料，重新渲染已關聯區塊
-    renderDetailReqAdd(); // 渲染可新增清單（排除已在 detailReqIds 的）
-  }catch(e){}
 }
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
 async function saveDetail(){
