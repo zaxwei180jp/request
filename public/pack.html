@@ -461,13 +461,24 @@ document.addEventListener('click', e => {
 function renderDetailReqs(){
   const wrap=document.getElementById('d_reqs_edit');
   if(!wrap) return;
-  const linked=detailReqIds.map(pid=>({pid,...(reqMap[pid]||{label:pid.slice(0,8),client:''})}));
+  // 優先從 allReqsForDetail 取完整資訊（有 label + name），fallback 到 reqMap
+  const allMap=Object.fromEntries(allReqsForDetail.map(x=>[x._pageId,x]));
+  const linked=detailReqIds.map(pid=>{
+    const full=allMap[pid];
+    const rm=reqMap[pid]||{};
+    return {
+      pid,
+      label: full?.label || rm.label || pid.slice(0,8),
+      client: full?.client || rm.client || '',
+      name: full?.name || '',
+    };
+  });
   wrap.innerHTML=linked.length
     ? linked.map(item=>`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
           <div>
             <span style="font-size:14px;font-weight:700;color:var(--purple)">${item.label}</span>
-            ${item.client?`<span style="font-size:12px;color:var(--muted);margin-left:6px">${item.client}</span>`:''}
+            <span style="font-size:12px;color:var(--muted);margin-left:6px">${item.client||''}${item.name?' · '+String(item.name).slice(0,25):''}</span>
           </div>
           <button onclick="detailRemoveReq('${item.pid}')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px" title="移除">✕</button>
         </div>`).join('')
@@ -502,6 +513,15 @@ async function openDetail(pageId){
   if(!r){toast('找不到資料');return;}
   saveScroll();viewingId=pageId;
   detailReqIds=[...(r.reqIds||[])];
+  // 每次開啟時重建 reqMap，確保即使 resolveReqLabels 當時沒跑成功也能正確顯示
+  try{
+    const raw=localStorage.getItem('req_cache_v1');
+    if(raw){
+      const parsed=JSON.parse(raw);
+      const reqs=parsed?.data||parsed?.records||[];
+      reqs.forEach(x=>{ if(x._pageId) reqMap[x._pageId]={label:x.id||x.label||'',client:x.client||''}; });
+    }
+  }catch(e){}
   document.getElementById('dId').textContent=r.id||'—';
   document.getElementById('dbody').innerHTML=`
     <div class="dc">
@@ -538,31 +558,32 @@ async function openDetail(pageId){
   renderDetailReqs();
   allReqsForDetail=[];renderDetailReqAdd();
   try{
-    // 先從快取初始化（格式：{ts, data:[{_pageId, id:RE001, ...}]}）
-    const raw=localStorage.getItem('req_cache_v1');
-    if(raw){
-      const parsed=JSON.parse(raw);
-      const reqs=parsed?.data||parsed?.records||[];
-      if(reqs.length){
-        allReqsForDetail=reqs.map(x=>({_pageId:x._pageId,label:x.id||x.label||x._pageId.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}));
-        renderDetailReqAdd();
-      }
-    }
-    // 再從 API 取最新 unlinked_reqs（格式：{id:pageId, label:RE001, ...}）
-    const res=await fetch(API+'?action=unlinked_reqs');
-    const fresh=await res.json();
-    if(Array.isArray(fresh)&&fresh.length){
-      const freshNorm=fresh.map(x=>({_pageId:x.id,label:x.label||x.id.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}));
-      // 補上已關聯的（unlinked_reqs 不含已關聯的）
-      const linkedItems=detailReqIds.map(pid=>{
-        const info=reqMap[pid]||{};
-        return {_pageId:pid,label:info.label||pid.slice(0,8),name:'',client:info.client||'',estWeight:0};
-      });
-      const freshIds=new Set(freshNorm.map(x=>x._pageId));
-      const extra=linkedItems.filter(x=>!freshIds.has(x._pageId));
-      allReqsForDetail=[...freshNorm,...extra];
-      renderDetailReqAdd();
-    }
+    // 從 API 同時拉 unlinked_reqs 和完整 req list（用於補齊已關聯的 label）
+    const [resUnlinked, resList] = await Promise.all([
+      fetch(API+'?action=unlinked_reqs'),
+      fetch(API+'?action=list'),
+    ]);
+    const fresh=await resUnlinked.json();
+    const allReqs=await resList.json();
+    // 用完整 req list 建立所有需求單的 map（含 label + name）
+    // list API 格式：{_pageId, id:RE001, name, client, ...}
+    const allReqsNorm=Array.isArray(allReqs)
+      ? allReqs.map(x=>({_pageId:x._pageId,label:x.id||'',name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
+      : [];
+    allReqsNorm.forEach(x=>{ if(x._pageId) reqMap[x._pageId]={label:x.label,client:x.client}; });
+
+    // unlinked_reqs 格式：{id:pageId, label:RE001, name, client, ...}
+    const freshNorm=Array.isArray(fresh)
+      ? fresh.map(x=>({_pageId:x.id,label:x.label||x.id.slice(0,8),name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
+      : [];
+
+    // 合併：以完整 allReqs 為主，unlinked_reqs 不含已關聯的所以兩者聯集
+    const allMap=Object.fromEntries(allReqsNorm.map(x=>[x._pageId,x]));
+    freshNorm.forEach(x=>{ if(!allMap[x._pageId]) allMap[x._pageId]=x; });
+    allReqsForDetail=Object.values(allMap);
+
+    renderDetailReqs();   // 此時 allReqsForDetail 有完整資料，重新渲染已關聯區塊
+    renderDetailReqAdd(); // 渲染可新增清單（排除已在 detailReqIds 的）
   }catch(e){}
 }
 function closeDetail(){document.getElementById('detailOv').classList.remove('open');restoreScroll();}
