@@ -458,6 +458,23 @@ document.addEventListener('click', e => {
     if (field && label) cycleStatus(btn.id || '', label);
   }
 });
+// 依委託人排序，同委託人再依編號（RE 數字）由大到小
+function byClientThenLabel(a,b){
+  const ca=a.client||'', cb=b.client||'';
+  if(ca!==cb){
+    if(!ca) return 1; if(!cb) return -1;   // 沒有委託人的排最後
+    return ca.localeCompare(cb,'zh-Hant');
+  }
+  const na=parseInt(String(a.label).replace(/\D/g,''))||0;
+  const nb=parseInt(String(b.label).replace(/\D/g,''))||0;
+  return nb-na;
+}
+// 依編號（RE 數字）由大到小
+function byLabelDesc(a,b){
+  const na=parseInt(String(a.label).replace(/\D/g,''))||0;
+  const nb=parseInt(String(b.label).replace(/\D/g,''))||0;
+  return nb-na;
+}
 function renderDetailReqs(){
   const wrap=document.getElementById('d_reqs_edit');
   if(!wrap) return;
@@ -472,7 +489,7 @@ function renderDetailReqs(){
       client: full?.client || rm.client || '',
       name: full?.name || '',
     };
-  });
+  }).sort(byClientThenLabel);
   wrap.innerHTML=linked.length
     ? linked.map(item=>`
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
@@ -496,7 +513,7 @@ function renderDetailReqAdd(){
     if(detailReqIds.includes(r._pageId)) return false;
     if(!q) return true;
     return ((r.label||'')+(r.client||'')+(r.name||'')).toLowerCase().includes(q);
-  });
+  }).sort(byLabelDesc);
   if(!available.length){wrap.innerHTML='<div style="text-align:center;color:var(--hint);padding:12px;font-size:13px">沒有可新增的需求單</div>';return;}
   wrap.innerHTML=available.map(r=>`
     <div class="req-item" onclick="detailAddReq('${r._pageId}')" style="cursor:pointer">
