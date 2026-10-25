@@ -364,6 +364,26 @@ export default async function handler(req) {
     }
 
     // ── UNLINKED REQS (for pack create) ─────────────────────────
+    // ── REQS BY IDS（出貨單詳細頁顯示已關聯需求單用）────────────
+    if (action === 'reqs_by_ids') {
+      const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean);
+      const map = await batchFetchPages(new Set(ids), page => {
+        const props = page.properties || {};
+        const titleP  = Object.values(props).find(v => v.type === 'title');
+        const nameP   = Object.values(props).find(v => v.id === 'Tcrm');
+        const clientP = Object.values(props).find(v => v.id === 'A%3A%3Ei');
+        const weightP = Object.values(props).find(v => v.id === '%5ECer');
+        return {
+          id:        page.id,
+          label:     titleP?.title?.[0]?.plain_text || page.id.slice(0,8),
+          name:      nameP?.rich_text?.[0]?.plain_text || '',
+          client:    clientP?.rich_text?.[0]?.plain_text || '',
+          estWeight: weightP?.number ?? 0,
+        };
+      });
+      return json(ids.map(id => map[id]).filter(Boolean));
+    }
+
     if (action === 'unlinked_reqs') {
       const results = await queryAll(DB_REQ);
       const unlinked = results.filter(page => {
