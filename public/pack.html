@@ -558,17 +558,17 @@ async function openDetail(pageId){
   renderDetailReqs();
   allReqsForDetail=[];renderDetailReqAdd();
   try{
-    // 從 API 同時拉 unlinked_reqs 和完整 req list（用於補齊已關聯的 label）
-    const [resUnlinked, resList] = await Promise.all([
+    // 同時拉：未關聯需求單 + 依 ID 直接查詢已關聯需求單
+    const ids=detailReqIds.join(',');
+    const [resUnlinked, resLinked] = await Promise.all([
       fetch(API+'?action=unlinked_reqs'),
-      fetch(API+'?action=list'),
+      ids ? fetch(API+'?action=reqs_by_ids&ids='+encodeURIComponent(ids)) : Promise.resolve(null),
     ]);
     const fresh=await resUnlinked.json();
-    const allReqs=await resList.json();
-    // 用完整 req list 建立所有需求單的 map（含 label + name）
-    // list API 格式：{_pageId, id:RE001, name, client, ...}
-    const allReqsNorm=Array.isArray(allReqs)
-      ? allReqs.map(x=>({_pageId:x._pageId,label:x.id||'',name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
+    const linked=resLinked ? await resLinked.json() : [];
+    // reqs_by_ids 格式：{id:pageId, label:RE001, name, client, estWeight}
+    const allReqsNorm=Array.isArray(linked)
+      ? linked.map(x=>({_pageId:x.id,label:x.label||'',name:x.name||'',client:x.client||'',estWeight:x.estWeight||0}))
       : [];
     allReqsNorm.forEach(x=>{ if(x._pageId) reqMap[x._pageId]={label:x.label,client:x.client}; });
 
