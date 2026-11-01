@@ -333,7 +333,7 @@ export default async function handler(req) {
       });
       const data = await res.json();
       if (data.object === 'error') return json({ error: data.message }, 500);
-      return json({ ok: true });
+      return json({ ok: true, id: data.id });
     }
 
     // ── REQ UPDATE ──────────────────────────────────────────────
