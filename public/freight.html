@@ -4,21 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>貨物運費</title>
+<meta name="theme-color" content="#FCFBF8">
 <style>
 :root{
-  --purple:#6B64B8;--pl:#EFEFF5;
-  --bg:#F2F2F7;--card:#fff;--bg2:#E8E8ED;
-  --text:#1C1C1E;--muted:#6C6C70;--hint:#AEAEB2;
-  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
-  --r:16px;--rs:10px;--shadow:0 2px 8px rgba(0,0,0,0.06);
-  --green:#3D7A65;--gbg:#E8F2ED;--red:#8A5040;--rbg:#F0E9E5;
+  /* 莫蘭迪色系・明亮版 */
+  --purple:#8B84A3;--pl:#EDEAF1;
+  --bg:#F4F1EC;--card:#FCFBF8;--bg2:#EEE9E2;
+  --text:#4B4643;--muted:#8C847D;--hint:#B9B1A8;
+  --border:rgba(75,70,67,.08);--border2:rgba(75,70,67,.16);
+  --r:16px;--rs:10px;--shadow:0 2px 10px rgba(120,105,90,.08);
+  --green:#6E8466;--gbg:#E5EADF;--red:#A2705F;--rbg:#F2E5DF;
 }
-@media(prefers-color-scheme:dark){:root{
-  --bg:#000;--card:#1C1C1E;--bg2:#2C2C2E;
-  --text:#FFFFFF;--muted:#8E8E93;--hint:#48484A;
-  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
-  --shadow:0 2px 8px rgba(0,0,0,0.5);
-}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh}
 .nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
@@ -48,7 +44,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stat-l{font-size:10px;color:var(--hint);margin-top:3px}
 .list{padding:0 16px 120px;display:flex;flex-direction:column;gap:12px;padding-top:4px}
 .card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid transparent}
-.card.selected{border-color:var(--purple);background:rgba(83,74,183,.05)}
+.card.selected{border-color:var(--purple);background:rgba(139,132,163,.07)}
 .card-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border2);display:none;flex-shrink:0;align-items:center;justify-content:center}
 .select-mode .card-check{display:flex}
 .card.selected .card-check{background:var(--purple);border-color:var(--purple);color:#fff;font-size:13px;font-weight:700}
@@ -62,8 +58,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .batch-opts{display:flex;gap:8px;flex-wrap:wrap}
 .batch-opt{border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
 .batch-opt:active{opacity:.75}
-.bo-co{background:#E4EDF5;color:#3A6A94}
-.bo-cl{background:#E8F2ED;color:#3D7A65}
+.bo-co{background:#E2E8EE;color:#6A8299}
+.bo-cl{background:#E5EADF;color:#6E8466}
 .btn-icon.on{background:var(--purple);color:#fff}
 .card:active{opacity:.8}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
@@ -74,7 +70,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-flex;align-items:center;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;gap:4px}
 .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;display:inline-block}
 .b-paid{background:var(--gbg);color:var(--green)}
-.b-unpaid{background:#F2EDE0;color:#7A5E2E}
+.b-unpaid{background:#F2EADB;color:#9C8058}
 .b-def{background:var(--bg2);color:var(--muted)}
 .card-client{font-size:17px;font-weight:700;margin-bottom:12px}
 .bricks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -87,10 +83,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-note{font-size:13px;color:var(--muted);margin-top:10px}
 .empty{text-align:center;padding:80px 16px;color:var(--muted)}
 .empty-ico{font-size:56px;margin-bottom:16px}
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,.95);backdrop-filter:blur(10px);color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(75,70,67,.92);backdrop-filter:blur(10px);color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 .lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
-.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:flex-end}
+.ov{display:none;position:fixed;inset:0;background:rgba(75,70,67,.35);z-index:300;align-items:flex-end}
 .ov.open{display:flex}
 .sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-height:94vh;overflow-y:auto;padding:0 0 40px;animation:up .3s ease}
 @keyframes up{from{transform:translateY(80px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -102,7 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fld{margin-bottom:16px}
 .fld label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
 .fld input,.fld select{width:100%;border:.5px solid var(--border2);border-radius:var(--rs);padding:13px 14px;font-size:16px;background:var(--card);color:var(--text);outline:none;-webkit-appearance:none}
-.fld input:focus,.fld select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+.fld input:focus,.fld select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,132,163,.15)}
 .fld select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .factions{display:flex;gap:12px;margin-top:24px}
