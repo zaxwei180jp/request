@@ -157,7 +157,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr-row">
     <div class="hdr-left"><h1>貨物運費</h1><p id="hdrSub">載入中…</p></div>
     <div class="hdr-btns">
-      <button class="btn-icon" id="btnSelect" onclick="toggleSelect()">選取</button>
       <button class="btn-icon" onclick="loadAll(true)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       <button class="btn-add" onclick="openAdd()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
     </div>
@@ -171,7 +170,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="chip-gap"></div>
 </div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
-<div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
 
 <!-- ADD -->
@@ -308,7 +306,7 @@ function renderList(){
     <div class="card${selectedIds.has(r._pageId)?' selected':''}" onclick="cardClick('${r._pageId}')">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="card-check">${selectedIds.has(r._pageId)?'✓':''}</div>
+          <div class="card-check" onclick="event.stopPropagation();batchToggle('${r._pageId}')">${selectedIds.has(r._pageId)?'✓':''}</div>
           <div class="card-id">${r.id||'—'}</div>
           <div class="card-pack">${r.pack||'—'}</div>
         </div>
@@ -329,7 +327,7 @@ function renderList(){
       ${r.note?`<div class="card-note">${r.note}</div>`:''}
     </div>`).join('');
 }
-function renderAll(){renderChips();renderStats();renderList();}
+function renderAll(){renderChips();renderStats();renderList();renderBatch();}
 
 function fillSel(id,key,cur=''){
   const el=document.getElementById(id);
@@ -381,10 +379,13 @@ async function saveNew(){
   };
   if(!body.freightId){toast('請填寫編號');btn.disabled=false;btn.textContent='新增到 Notion';return;}
   try{
+    showSaving('新增中…');
     const r=await fetch(API+'?action=freight_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.freightId} 已新增`);closeAdd();await loadAll(true);window.scrollTo(0,0);
-  }catch(e){toastErr('操作失敗',e);}
+    showSaving('同步列表中…');
+    await reloadUntil(reloadList,()=>d.id?records.some(x=>x._pageId===d.id):records.some(x=>x.id===body.freightId));
+    hideSaving();closeAdd();window.scrollTo(0,0);toast(`✅ ${body.freightId} 已新增`);
+  }catch(e){hideSaving();toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
 
@@ -445,67 +446,43 @@ async function saveDetail(){
     note:document.getElementById('d_note').value.trim(),
   };
   try{
+    showSaving('儲存中…');
     const r=await fetch(`${API}?action=freight_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast('✅ 已儲存');
-    await new Promise(r=>setTimeout(r,1000));
-    await loadAll(true);closeDetail();
-  }catch(e){toastErr('操作失敗',e);}
+    showSaving('同步列表中…');
+    await reloadUntil(reloadList,()=>{
+      const x=records.find(y=>y._pageId===viewingId);
+      return !x||(_same(x.companyStatus,body.companyStatus||x.companyStatus)&&_same(x.clientStatus,body.clientStatus||x.clientStatus)&&_same(x.note,body.note)&&_same(x.weightDiff,body.weightDiff));
+    });
+    hideSaving();closeDetail();toast('✅ 已儲存');
+  }catch(e){hideSaving();toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
-function toggleSelect(){
-  selectMode=!selectMode;selectedIds.clear();
-  const btn=document.getElementById('btnSelect');
-  btn.classList.toggle('on',selectMode);
-  btn.textContent=selectMode?'退出':'選取';
-  renderBatch();renderList();
-}
-function selectAll(){baseFiltered().forEach(r=>selectedIds.add(r._pageId));renderBatch();renderList();}
-function clearSelect(){selectedIds.clear();renderBatch();renderList();}
 
-function renderBatch(){
-  const panel=document.getElementById('batchPanel');
-  panel.classList.toggle('open',selectMode);
-  if(!selectMode)return;
-  const coOpts=schema['公司狀態']?.options||[];
-  const clOpts=schema['客戶狀態']?.options||[];
-  const cnt=selectedIds.size;
-  const actions=[
-    ...coOpts.map((o,i)=>({i,val:o,key:'companyStatus'})),
-    ...clOpts.map((o,i)=>({i:coOpts.length+i,val:o,key:'clientStatus'})),
-  ];
-  window._ba=actions;
-  panel.innerHTML=`
-    <div class="batch-top">
-      <span class="batch-count">已選 ${cnt} 筆</span>
-      <div class="batch-ctrl"><button onclick="selectAll()">全選</button><button onclick="clearSelect()">取消</button></div>
-    </div>
-    <div><div class="batch-group-l">公司狀態</div><div class="batch-opts">${coOpts.map((o,i)=>`<button class="batch-opt bo-co" ${cnt===0?'disabled':''} onclick="batchUpdate(${i})">${o}</button>`).join('')}</div></div>
-    <div><div class="batch-group-l">客戶狀態</div><div class="batch-opts">${clOpts.map((o,i)=>`<button class="batch-opt bo-cl" ${cnt===0?'disabled':''} onclick="batchUpdate(${coOpts.length+i})">${o}</button>`).join('')}</div></div>`;
-}
 
+
+
+
+// ── 批次選取 ──
 function cardClick(pageId){
-  if(selectMode){
-    if(selectedIds.has(pageId))selectedIds.delete(pageId);else selectedIds.add(pageId);
-    renderBatch();renderList();
-  } else { openDetail(pageId); }
+  if(selectedIds.size>0) batchToggle(pageId);
+  else openDetail(pageId);
 }
-
-async function batchUpdate(i){
-  const a=window._ba[i];if(!a||selectedIds.size===0)return;
-  if(!confirm(`確定將 ${selectedIds.size} 筆改為「${a.val}」？`))return;
-  const ids=[...selectedIds];let ok=0,fail=0;
-  await Promise.all(ids.map(async pid=>{
-    try{
-      const body={};
-      body[a.key]=a.val;
-      const res=await fetch(`${API}?action=freight_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const d=await res.json();if(d.error)fail++;else ok++;
-    }catch(e){fail++;}
-  }));
-  toast(fail>0?`✅ ${ok} 筆成功 ❌ ${fail} 筆失敗`:`✅ ${ok} 筆已更新`);
-  selectedIds.clear();await loadAll(true);
-}
+async function reloadList(){await loadRecords(true);renderAll();}
+const BATCH_CFG={
+  fields:[
+    {key:'companyStatus',label:'公司狀態',short:'公司',options:()=>schema['公司狀態']?.options||[]},
+    {key:'clientStatus',label:'客戶狀態',short:'客戶',options:()=>schema['客戶狀態']?.options||[]},
+  ],
+  badge:v=>badge(v),
+  visibleIds:()=>baseFiltered().map(r=>r._pageId),
+  updateOne:async(pid,key,val)=>{
+    const res=await fetch(`${API}?action=freight_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({[key]:val})});
+    const d=await res.json();if(d.error)throw new Error(d.error);
+  },
+  reload:reloadList,
+  rerender:()=>renderList(),
+};
 
 loadAll();
 </script>

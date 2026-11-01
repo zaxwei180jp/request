@@ -163,7 +163,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr-row">
     <div class="hdr-left"><h1>出貨單</h1><p id="hdrSub">載入中…</p></div>
     <div class="hdr-btns">
-      <button class="btn-icon" id="btnSelect" onclick="toggleSelect()">選取</button>
       <button class="btn-icon" onclick="loadAll(true)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       <button class="btn-add" onclick="openAdd()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新增</button>
     </div>
@@ -177,7 +176,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="chip-gap"></div>
 </div><!-- /sticky-top -->
 <div class="stats" id="statsBar"></div>
-<div class="batch" id="batchPanel"></div>
 <div class="list" id="list"></div>
 
 <!-- ADD -->
@@ -347,7 +345,7 @@ function renderList(){
     <div class="card${selectedIds.has(r._pageId)?' selected':''}" onclick="cardClick('${r._pageId}')">
       <div class="card-top">
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="card-check">${selectedIds.has(r._pageId)?'✓':''}</div>
+          <div class="card-check" onclick="event.stopPropagation();batchToggle('${r._pageId}')">${selectedIds.has(r._pageId)?'✓':''}</div>
           <div class="card-id">${r.id||'—'}</div>
           ${r.clients?.length?`<div class="card-clients">${r.clients.join(' · ')}</div>`:''}
         </div>
@@ -366,7 +364,7 @@ function renderList(){
       ${r.note?`<div style="font-size:13px;color:var(--muted);margin-top:10px">${r.note}</div>`:''}
     </div>`).join('');
 }
-function renderAll(){renderChips();renderStats();renderList();}
+function renderAll(){renderChips();renderStats();renderList();renderBatch();}
 
 function fillSel(id,key){
   const el=document.getElementById(id);
@@ -431,10 +429,13 @@ async function saveNew(){
   };
   if(!body.packId){toast('請填寫包貨單編號');btn.disabled=false;btn.textContent='新增到 Notion';return;}
   try{
+    showSaving('新增中…');
     const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
-    toast(`✅ ${body.packId} 已新增`);closeAdd();await loadAll(true);window.scrollTo(0,0);
-  }catch(e){toastErr('操作失敗',e);}
+    showSaving('同步列表中…');
+    await reloadUntil(reloadList,()=>d.id?records.some(x=>x._pageId===d.id):records.some(x=>x.id===body.packId));
+    hideSaving();closeAdd();window.scrollTo(0,0);toast(`✅ ${body.packId} 已新增`);
+  }catch(e){hideSaving();toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='新增到 Notion';
 }
 
@@ -626,6 +627,7 @@ async function saveDetail(){
     reqIds:detailReqIds,
   };
   try{
+    showSaving('儲存中…');
     const r=await fetch(`${API}?action=pack_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
     // 需求單有變更時同步 Notion 關聯
@@ -633,74 +635,45 @@ async function saveDetail(){
       const rr=await fetch(`${API}?action=pack_update_reqs&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reqIds:detailReqIds,addedIds,removedIds,packId:viewingId})});
       const dd=await rr.json();if(dd.error)throw new Error(dd.error);
     }
-    toast('✅ 已儲存');
-    await new Promise(r=>setTimeout(r,1000));
-    await loadAll(true);closeDetail();
-  }catch(e){toastErr('操作失敗',e);}
+    showSaving('同步列表中…');
+    const wantReqs=[...detailReqIds].sort().join(',');
+    await reloadUntil(reloadList,()=>{
+      const x=records.find(y=>y._pageId===viewingId);
+      return !x||(_same(x.box,body.box)&&_same(x.seal,body.seal||x.seal)&&_same(x.ship,body.ship||x.ship)&&_same(x.note,body.note)&&[...(x.reqIds||[])].sort().join(',')===wantReqs);
+    });
+    hideSaving();closeDetail();toast('✅ 已儲存');
+  }catch(e){hideSaving();toastErr('操作失敗',e);}
   btn.disabled=false;btn.textContent='儲存';
 }
-function toggleSelect(){
-  selectMode=!selectMode;selectedIds.clear();
-  const btn=document.getElementById('btnSelect');
-  btn.classList.toggle('on',selectMode);
-  btn.textContent=selectMode?'退出':'選取';
-  renderBatch();renderList();
-}
-function selectAll(){baseFiltered().forEach(r=>selectedIds.add(r._pageId));renderBatch();renderList();}
-function clearSelect(){selectedIds.clear();renderBatch();renderList();}
 
-function renderBatch(){
-  const panel=document.getElementById('batchPanel');
-  panel.classList.toggle('open',selectMode);
-  if(!selectMode)return;
-  const sealOpts=schema['封箱狀態']?.options||[];
-  const shipOpts=schema['發貨狀態']?.options||[];
-  const cnt=selectedIds.size;
-  const actions=[
-    ...sealOpts.map((o,i)=>({i,val:o,key:'seal'})),
-    ...shipOpts.map((o,i)=>({i:sealOpts.length+i,val:o,key:'ship'})),
-  ];
-  window._ba=actions;
-  panel.innerHTML=`
-    <div class="batch-top">
-      <span class="batch-count">已選 ${cnt} 筆</span>
-      <div class="batch-ctrl"><button onclick="selectAll()">全選</button><button onclick="clearSelect()">取消</button></div>
-    </div>
-    <div><div class="batch-group-l">封箱狀態</div><div class="batch-opts">${sealOpts.map((o,i)=>`<button class="batch-opt bo-seal" ${cnt===0?'disabled':''} onclick="batchUpdate(${i})">${o}</button>`).join('')}</div></div>
-    <div><div class="batch-group-l">發貨狀態</div><div class="batch-opts">${shipOpts.map((o,i)=>`<button class="batch-opt bo-ship" ${cnt===0?'disabled':''} onclick="batchUpdate(${sealOpts.length+i})">${o}</button>`).join('')}</div></div>`;
-}
 
+
+
+
+
+// ── 批次選取 ──
 function cardClick(pageId){
-  if(selectMode){
-    if(selectedIds.has(pageId))selectedIds.delete(pageId);else selectedIds.add(pageId);
-    renderBatch();renderList();
-  } else { openDetail(pageId); }
+  if(selectedIds.size>0) batchToggle(pageId);
+  else openDetail(pageId);
 }
-
-async function batchUpdate(i){
-  const a=window._ba[i];if(!a||selectedIds.size===0)return;
-  if(!confirm(`確定將 ${selectedIds.size} 筆改為「${a.val}」？`))return;
-  const ids=[...selectedIds];let ok=0,fail=0;
-  await Promise.all(ids.map(async pid=>{
-    try{
-      const body={};
-      if(a.key==='seal') body.seal=a.val;
-      if(a.key==='ship'){
-        body.ship=a.val;
-        // ship='完成' 時帶入 reqIds，觸發 cascade 更新關聯需求單
-        if(a.val==='完成'){
-          const rec=records.find(r=>r.id===pid);
-          if(rec?.reqIds?.length) body.reqIds=rec.reqIds;
-        }
-      }
-      const res=await fetch(`${API}?action=pack_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const d=await res.json();if(d.error)fail++;else ok++;
-    }catch(e){fail++;}
-  }));
-  toast(fail>0?`✅ ${ok} 筆成功 ❌ ${fail} 筆失敗`:`✅ ${ok} 筆已更新`);
-  selectedIds.clear();await loadAll(true);
-}
-
+async function reloadList(){await loadRecords(true);renderAll();}
+const BATCH_CFG={
+  fields:[
+    {key:'seal',label:'封箱狀態',short:'封箱',options:()=>schema['封箱狀態']?.options||[]},
+    {key:'ship',label:'發貨狀態',short:'發貨',options:()=>schema['發貨狀態']?.options||[]},
+  ],
+  badge:v=>badge(v,STATUS_MAP_PACK),
+  visibleIds:()=>baseFiltered().map(r=>r._pageId),
+  updateOne:async(pid,key,val)=>{
+    const body={[key]:val};
+    // 發貨改成「完成」時，一起把裡面的需求單改成完成（跟單筆儲存一樣）
+    if(key==='ship'){const rec=records.find(x=>x._pageId===pid);body.reqIds=rec?.reqIds||[];}
+    const res=await fetch(`${API}?action=pack_update&id=${pid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await res.json();if(d.error)throw new Error(d.error);
+  },
+  reload:reloadList,
+  rerender:()=>renderList(),
+};
 
 loadAll();
 </script>
