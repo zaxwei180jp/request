@@ -60,6 +60,35 @@ async function fetchPage(id) {
   return res.json();
 }
 
+// ── PJ條碼：依欄位名稱找（不寫死欄位 ID），依 Notion 欄位類型讀寫 ──
+const BARCODE_NAME = 'PJ條碼';
+function barcodeProp(props) {
+  if (!props) return null;
+  if (props[BARCODE_NAME]) return props[BARCODE_NAME];
+  const k = Object.keys(props).find(n => n.replace(/\s/g, '').includes('條碼'));
+  return k ? props[k] : null;
+}
+let _barcodeTypeCache = null;
+async function barcodeWriteProp(value) {
+  if (!_barcodeTypeCache) {
+    const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PACK}`, { headers: nHeaders() });
+    const db  = await res.json();
+    const bp  = barcodeProp(db.properties);
+    _barcodeTypeCache = bp ? { id: bp.id, type: bp.type } : { id: null, type: null };
+  }
+  const { id, type } = _barcodeTypeCache;
+  if (!id) return null;
+  const v = String(value ?? '').trim();
+  let prop = null;
+  if (type === 'rich_text')    prop = { rich_text: v ? [{ text: { content: v } }] : [] };
+  if (type === 'number')       prop = { number: v === '' ? null : Number(v) };
+  if (type === 'url')          prop = { url: v || null };
+  if (type === 'phone_number') prop = { phone_number: v || null };
+  if (type === 'select')       prop = { select: v ? { name: v } : null };
+  // 公式、彙總等唯讀欄位不寫入
+  return prop ? { id: decodeURIComponent(id), prop } : null;
+}
+
 // Extract value from a Notion property
 function val(prop) {
   if (!prop) return null;
@@ -83,6 +112,9 @@ function val(prop) {
       return '';
     }
     case 'relation':   return prop.relation || [];
+    case 'url':        return prop.url || '';
+    case 'phone_number': return prop.phone_number || '';
+    case 'email':      return prop.email || '';
     default:           return null;
   }
 }
@@ -444,6 +476,7 @@ export default async function handler(req) {
           arrive:   g('%5B~Wz'),
           note:      g('FuLG'),
           shipDate:  g('tH%5C%5D'),
+          barcode:   (bp => bp?.type === 'number' ? String(bp.number ?? '') : String(val(bp) ?? ''))(barcodeProp(p)),
           reqIds:    rel.map(r => r.id),
           reqCount:  rel.length,
         };
@@ -495,6 +528,7 @@ export default async function handler(req) {
       const body   = await req.json();
       const props  = {};
       if (body.box    !== undefined) props['llSb']     = { rich_text: [{ text: { content: body.box || '' } }] };
+      if (body.barcode !== undefined) { const b = await barcodeWriteProp(body.barcode); if (b) props[b.id] = b.prop; }
       if (body.weight !== undefined) props['uStz']     = { number: Number(body.weight) || 0 };
       if (body.seal)                 props['m|yI']     = { status: { name: body.seal } };
       if (body.ship)                 props['yQKS']     = { status: { name: body.ship } };
@@ -526,6 +560,7 @@ export default async function handler(req) {
       const props = {};
       if (body.packId)          props['title']  = { title: [{ text: { content: body.packId } }] };
       if (body.box)             props['llSb']   = { rich_text: [{ text: { content: body.box } }] };
+      if (body.barcode)         { const b = await barcodeWriteProp(body.barcode); if (b) props[b.id] = b.prop; }
       if (body.weight)          props['uStz']   = { number: Number(body.weight) || 0 };
       if (body.seal)            props['m|yI']   = { status: { name: body.seal } };
       if (body.ship)            props['yQKS']   = { status: { name: body.ship } };
