@@ -763,6 +763,60 @@ export default async function handler(req) {
       return json({ ok: true, id: data.id });
     }
 
+    // ── STATS ALL（統計頁：一次讀全部需求單／出貨單／運費的精簡欄位）──
+    if (action === 'stats_all') {
+      const [reqPages, packPages, freightPages, shiptoPages] = await Promise.all([
+        queryAll(DB_REQ),
+        queryAll(DB_PACK, []),
+        queryAll(DB_FREIGHT),
+        queryAll(DB_SHIPTO, []),
+      ]);
+      const day = v => (v || '').slice(0, 10);
+      const clientMap = {};
+      shiptoPages.forEach(pg => {
+        const p = pg.properties || {};
+        const t = Object.values(p).find(v => v.type === 'title');
+        const n = Object.values(p).find(v => v.id === '~zOg');
+        clientMap[pg.id] = n?.rich_text?.[0]?.plain_text || t?.title?.[0]?.plain_text || '';
+      });
+      const reqs = reqPages.map(page => {
+        const p = page.properties || {};
+        const g = id => val(prop(p, id));
+        return {
+          date:    day(g('uF%3AY')) || day(page.created_time),   // 提交日，沒填就用建立日
+          client:  g('A%3A%3Ei') || '',
+          type:    g('%5Dyoq')   || '',
+          shop:    g('SAe%60')   || '',
+          quote:   Number(g('cAk%5C')) || 0,
+          twQuote: Number(g('X%3E%7BZ')) || 0,
+          buy:     g('lA%3A_') || '',
+          pay:     g('ZFWL')   || '',
+          ship:    g('ko~P')   || '',
+        };
+      });
+      const packs = packPages.map(page => {
+        const p = page.properties || {};
+        const g = id => val(prop(p, id));
+        return { date: day(g('tH%5C%5D')), weight: Number(g('uStz')) || 0 };   // 出貨日期
+      });
+      const freights = freightPages.map(page => {
+        const p = page.properties || {};
+        const g = id => val(prop(p, id));
+        const rel = prop(p, 'mar%5B')?.relation || [];
+        return {
+          date:          day(g('JEQR')) || day(page.created_time),
+          client:        rel.map(r => clientMap[r.id] || '').filter(Boolean).join(', '),
+          companyAmount: Number(g('xmsH')) || 0,
+          clientAmount:  Number(g('ecPw')) || 0,
+          diff:          Number(g('%3FZZO')) || 0,
+          weight:        Number(g('%7CHtj')) || 0,
+          companyStatus: g('EmmN') || '',
+          clientStatus:  g('NInZ') || '',
+        };
+      });
+      return json({ reqs, packs, freights, at: new Date().toISOString() });
+    }
+
     // ── PRODUCT SEARCH ──────────────────────────────────────────
     if (action === 'product_search') {
       const code = url.searchParams.get('code') || '';
