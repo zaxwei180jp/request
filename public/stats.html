@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>統計分析</title>
+<meta name="theme-color" content="#FCFBF8">
+<style>
+:root{
+  /* 莫蘭迪色系・明亮版 */
+  --purple:#8B84A3;--pl:#EDEAF1;--plight:#D3CEDF;
+  --bg:#F4F1EC;--card:#FCFBF8;--bg2:#EEE9E2;
+  --text:#4B4643;--muted:#8C847D;--hint:#B9B1A8;
+  --border:rgba(75,70,67,.08);--border2:rgba(75,70,67,.16);
+  --r:16px;--rs:10px;--shadow:0 2px 10px rgba(120,105,90,.08);
+  --green:#6E8466;--gbg:#E5EADF;--red:#A2705F;--rbg:#F2E5DF;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:40px}
+
+/* NAV BAR */
+.nav{background:var(--card);border-bottom:.5px solid var(--border);display:flex;align-items:stretch;padding:0 16px;gap:4px;position:sticky;top:0;z-index:50}
+.nav-tab{flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0;font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;border-bottom:2.5px solid transparent;gap:6px}
+.nav-tab.active{color:var(--purple);border-bottom-color:var(--purple);font-weight:700}
+.nav-tab svg{flex-shrink:0}
+
+/* HEADER */
+.hdr{background:var(--card);padding:14px 16px 12px;border-bottom:.5px solid var(--border)}
+.hdr-row{display:flex;align-items:center;justify-content:space-between}
+.hdr-left h1{font-size:22px;font-weight:700}
+.hdr-left p{font-size:12px;color:var(--muted);margin-top:2px}
+.btn-icon{background:var(--bg2);border:none;border-radius:var(--rs);width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);flex-shrink:0}
+
+/* MONTH SWITCHER */
+.month{position:sticky;top:49px;z-index:40;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.m-btn{background:var(--card);border:none;border-radius:50%;width:38px;height:38px;cursor:pointer;color:var(--text);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.m-btn:disabled{opacity:.35;cursor:default}
+.m-mid{display:flex;flex-direction:column;align-items:center;gap:2px}
+.m-label{font-size:18px;font-weight:700}
+.m-now{background:none;border:none;color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;padding:2px 6px}
+
+/* SECTION */
+.sec{padding:0 16px;margin-top:14px}
+.sec-t{font-size:13px;font-weight:700;color:var(--muted);margin:0 2px 8px;letter-spacing:.02em}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+.kpi.wide{grid-column:1/-1}
+.kpi-l{font-size:12px;color:var(--muted);font-weight:600}
+.kpi-n{font-size:26px;font-weight:700;margin-top:4px;color:var(--text);font-variant-numeric:tabular-nums}
+.kpi-n small{font-size:14px;font-weight:600;color:var(--muted);margin-left:2px}
+.kpi-s{font-size:12px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi-s b{font-weight:600;color:var(--text)}
+.kpi-row{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
+
+/* CHART */
+.ch-t{font-size:14px;font-weight:700}
+.ch-s{font-size:12px;color:var(--muted);margin-top:2px}
+.ch{margin-top:10px;width:100%;display:block;overflow:visible}
+.ch text{font-family:inherit}
+.ch .bar{cursor:pointer}
+.ch-gap{height:14px}
+
+/* RANK */
+.seg{display:flex;background:var(--bg2);border-radius:10px;padding:3px;gap:3px;margin-bottom:12px}
+.seg button{flex:1;border:none;background:none;border-radius:8px;height:32px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(75,70,67,.1)}
+.rk{display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:3px;padding:8px 0;border-bottom:.5px solid var(--border)}
+.rk:last-child{border-bottom:none}
+.rk-n{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk-v{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk-v b{color:var(--text);font-weight:700}
+.rk-bar{grid-column:1/-1;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden}
+.rk-bar i{display:block;height:100%;background:var(--purple);border-radius:3px}
+.empty{color:var(--hint);font-size:13px;text-align:center;padding:14px 0}
+
+/* ROWS */
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:.5px solid var(--border);font-size:14px}
+.row:last-child{border-bottom:none}
+.row-l{color:var(--muted)}
+.row-v{font-weight:700;font-variant-numeric:tabular-nums}
+.row-v small{font-weight:500;color:var(--muted);font-size:12px;margin-right:6px}
+.row.big .row-v{font-size:18px}
+
+/* TODO */
+.todo{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:.5px solid var(--border)}
+.todo:last-child{border-bottom:none}
+.todo-ic{width:34px;height:34px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)}
+.todo-m{flex:1;min-width:0}
+.todo-l{font-size:14px;font-weight:600}
+.todo-s{font-size:12px;color:var(--muted);margin-top:1px}
+.todo-n{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(75,70,67,.92);color:#fff;padding:12px 24px;border-radius:24px;font-size:15px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.lbar{height:3px;background:var(--purple);position:fixed;top:0;left:0;z-index:9999;transition:width .3s;width:0}
+.loading{text-align:center;color:var(--muted);padding:60px 0;font-size:14px}
+.spin{width:28px;height:28px;border:3px solid var(--bg2);border-top-color:var(--purple);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto 12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="lbar" id="lbar"></div>
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="/" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    需求單
+  </a>
+  <a href="/pack.html" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+    出貨單
+  </a>
+  <a href="/freight.html" class="nav-tab">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    運費
+  </a>
+  <span class="nav-tab active">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    統計
+  </span>
+</nav>
+
+<div class="hdr">
+  <div class="hdr-row">
+    <div class="hdr-left">
+      <h1>統計分析</h1>
+      <p id="hdrSub">載入中…</p>
+    </div>
+    <button class="btn-icon" onclick="loadStats(true)" aria-label="重新整理">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="month">
+  <button class="m-btn" id="mPrev" onclick="shiftMonth(-1)" aria-label="上個月">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="m-mid">
+    <div class="m-label" id="mLabel">—</div>
+    <button class="m-now" id="mNow" onclick="goNow()" style="visibility:hidden">回到本月</button>
+  </div>
+  <button class="m-btn" id="mNext" onclick="shiftMonth(1)" aria-label="下個月">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
+
+<div id="main"><div class="loading"><div class="spin"></div>統計資料載入中…</div></div>
+
+<script src="/shared.js"></script>
+<script>
+// ── 狀態 ──
+let DATA=null;                 // {reqs, packs, freights, at}
+let curMonth=thisMonth();      // 'YYYY-MM'
+let rankTab='client';          // client | type | shop
+const CACHE_KEY='stats_cache_v1';
+
+function thisMonth(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+function addMonth(m,n){let [y,mo]=m.split('-').map(Number);mo+=n;while(mo<1){mo+=12;y--;}while(mo>12){mo-=12;y++;}return `${y}-${String(mo).padStart(2,'0')}`;}
+function monthLabel(m){const [y,mo]=m.split('-');return `${y}年${Number(mo)}月`;}
+function shortMonth(m){return `${Number(m.split('-')[1])}月`;}
+const inMonth=(d,m)=>(d||'').slice(0,7)===m;
+const yen=n=>'¥'+Math.round(n).toLocaleString();
+const twd=n=>(n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString();
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ── 載入 ──
+async function loadStats(force=false){
+  if(!force){
+    try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&c.reqs){DATA=c;render();}}catch(e){}
+  }
+  lbar(30);
+  try{
+    const r=await fetch(API+'?action=stats_all');
+    const d=await r.json();
+    if(d.error)throw new Error(d.error);
+    DATA=d;
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify(d));}catch(e){}
+    render();
+    if(force)toast('✅ 已更新');
+  }catch(e){
+    if(!DATA)document.getElementById('main').innerHTML=`<div class="loading">讀取失敗：${esc(e.message)}<br><br><button class="m-now" onclick="loadStats(true)">再試一次</button></div>`;
+    else toast('更新失敗，顯示的是上次的資料');
+  }
+  lbar(100);
+}
+
+// ── 月份 ──
+function shiftMonth(n){
+  const m=addMonth(curMonth,n);
+  if(m>thisMonth())return;
+  curMonth=m;render();
+}
+function goNow(){curMonth=thisMonth();render();}
+function pickMonth(m){curMonth=m;render();}
+
+// ── 計算 ──
+// uptoDay：只算到該月第幾天（本月還沒過完時，用來跟上月同期比較）
+function monthSummary(m,uptoDay){
+  const ok=d=>inMonth(d,m)&&(!uptoDay||Number((d||'').slice(8,10))<=uptoDay);
+  const reqs=DATA.reqs.filter(r=>ok(r.date));
+  const packs=DATA.packs.filter(p=>ok(p.date));
+  const fr=DATA.freights.filter(f=>ok(f.date));
+  const sum=(a,k)=>a.reduce((s,x)=>s+(Number(x[k])||0),0);
+  return {
+    reqs, packs, fr,
+    reqN:reqs.length, quote:sum(reqs,'quote'), twQuote:sum(reqs,'twQuote'),
+    packN:packs.length, packW:sum(packs,'weight'),
+    frN:fr.length, frW:sum(fr,'weight'),
+    co:sum(fr,'companyAmount'), cl:sum(fr,'clientAmount'), diff:sum(fr,'diff'),
+    clUnpaid:sum(fr.filter(f=>f.clientStatus==='未付款'),'clientAmount'),
+    coUnpaid:sum(fr.filter(f=>f.companyStatus==='未付款'),'companyAmount'),
+  };
+}
+let CMP='上月';   // 本月時顯示「上月同期」
+function change(cur,prev,isMoney){
+  if(!prev&&!cur)return `和${CMP}一樣`;
+  if(!prev)return `${CMP} ${isMoney?twd(0):'0'}`;
+  const pct=Math.round((cur-prev)/Math.abs(prev)*100);
+  if(pct===0)return `和${CMP}差不多`;
+  return `比${CMP} <b>${pct>0?'▲':'▼'} ${Math.abs(pct)}%</b>`;
+}
+
+// ── 畫面 ──
+function render(){
+  if(!DATA)return;
+  const now=thisMonth();
+  document.getElementById('mLabel').textContent=monthLabel(curMonth);
+  document.getElementById('mNow').style.visibility=curMonth===now?'hidden':'visible';
+  document.getElementById('mNext').disabled=curMonth>=now;
+  const t=new Date(DATA.at||Date.now());
+  document.getElementById('hdrSub').textContent=`更新於 ${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+
+  // 本月還沒過完：跟上個月「1 號到今天同一天」比較，比較公平
+  const today=new Date().getDate();
+  const isNow=curMonth===now;
+  CMP=isNow?'上月同期':'上月';
+  const s=monthSummary(curMonth), p=monthSummary(addMonth(curMonth,-1),isNow?today:0);
+  const months=[...Array(12)].map((_,i)=>addMonth(curMonth,i-11));
+  // 趨勢圖的 12 個月：以選取月份為最右邊
+  const trend=months.map(m=>({m,...(({reqN,diff})=>({reqN,diff}))(monthSummary(m))}));
+
+  document.getElementById('main').innerHTML=`
+  <div class="sec">
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-l">需求單</div>
+        <div class="kpi-n">${s.reqN}<small>筆</small></div>
+        <div class="kpi-s">${change(s.reqN,p.reqN)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">出貨單</div>
+        <div class="kpi-n">${s.packN}<small>筆</small></div>
+        <div class="kpi-s">共 <b>${(Math.round(s.packW*10)/10).toLocaleString()} KG</b></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">運費差額</div>
+        <div class="kpi-n" style="font-size:22px">${twd(s.diff)}</div>
+        <div class="kpi-s">${change(s.diff,p.diff,true)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-l">運費筆數</div>
+        <div class="kpi-n">${s.frN}<small>筆</small></div>
+        <div class="kpi-s">共 <b>${(Math.round(s.frW*10)/10).toLocaleString()} KG</b></div>
+      </div>
+      <div class="kpi wide">
+        <div class="kpi-l">需求單報價總額</div>
+        <div class="kpi-row">
+          <div class="kpi-n" style="font-size:22px">${yen(s.quote)}</div>
+          <div class="kpi-n" style="font-size:22px">${twd(s.twQuote)}</div>
+        </div>
+        <div class="kpi-s">${change(s.quote,p.quote)}（以日幣計）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">近 12 個月趨勢</div>
+    <div class="card">
+      <div class="ch-t">需求單筆數</div>
+      <div class="ch-s">點長條可以切換到那個月</div>
+      ${barChart(trend.map(x=>({k:x.m,label:shortMonth(x.m),v:x.reqN,txt:`${x.reqN} 筆`})),curMonth)}
+      <div class="ch-gap"></div>
+      <div class="ch-t">運費差額</div>
+      ${barChart(trend.map(x=>({k:x.m,label:shortMonth(x.m),v:x.diff,txt:twd(x.diff)})),curMonth)}
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">需求單分析（${monthLabel(curMonth)}）</div>
+    <div class="card">
+      <div class="seg">
+        <button class="${rankTab==='client'?'on':''}" onclick="setRank('client')">委託人</button>
+        <button class="${rankTab==='type'?'on':''}" onclick="setRank('type')">類別</button>
+        <button class="${rankTab==='shop'?'on':''}" onclick="setRank('shop')">商店</button>
+      </div>
+      ${rankList(s.reqs,rankTab)}
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">運費明細（${monthLabel(curMonth)}）</div>
+    <div class="card" style="padding:4px 16px">
+      <div class="row"><span class="row-l">客戶運費總額</span><span class="row-v">${twd(s.cl)}</span></div>
+      <div class="row"><span class="row-l">公司運費總額</span><span class="row-v">${twd(s.co)}</span></div>
+      <div class="row big"><span class="row-l">差額</span><span class="row-v" style="color:${s.diff>=0?'var(--green)':'var(--red)'}">${twd(s.diff)}</span></div>
+      <div class="row"><span class="row-l">客戶還沒付</span><span class="row-v">${twd(s.clUnpaid)}</span></div>
+      <div class="row"><span class="row-l">公司還沒付</span><span class="row-v">${twd(s.coUnpaid)}</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">待處理（不分月份）</div>
+    <div class="card" style="padding:4px 16px">${todoList()}</div>
+  </div>`;
+}
+
+// 直條圖：單一數列，選取的月份用深色，其他用淺色；負數往下長
+function barChart(items,sel){
+  const W=340,H=150,top=22,bottom=22,left=4,right=4;
+  const vals=items.map(x=>x.v);
+  const max=Math.max(0,...vals), min=Math.min(0,...vals);
+  const span=(max-min)||1;
+  const plotH=H-top-bottom;
+  const y=v=>top+(max-v)/span*plotH;
+  const base=y(0);
+  const slot=(W-left-right)/items.length;
+  const bw=Math.min(18,slot-6);
+  const r=4;
+  let bars='',labels='',hits='';
+  items.forEach((it,i)=>{
+    const cx=left+slot*i+slot/2, x=cx-bw/2;
+    const isSel=it.k===sel;
+    const fill=isSel?'var(--purple)':'var(--plight)';
+    const v=it.v;
+    if(v!==0){
+      const yy=y(v), h=Math.max(2,Math.abs(base-yy));
+      // 圓角只在資料端，貼著基準線那一端是直角
+      const rr=Math.min(r,h,bw/2);
+      const d=v>0
+        ?`M${x},${base}V${base-h+rr}Q${x},${base-h} ${x+rr},${base-h}H${x+bw-rr}Q${x+bw},${base-h} ${x+bw},${base-h+rr}V${base}Z`
+        :`M${x},${base}V${base+h-rr}Q${x},${base+h} ${x+rr},${base+h}H${x+bw-rr}Q${x+bw},${base+h} ${x+bw},${base+h-rr}V${base}Z`;
+      bars+=`<path class="bar" d="${d}" fill="${fill}"/>`;
+    }
+    if(isSel){
+      const ty=v>=0?y(v)-6:y(v)+14;
+      labels+=`<text x="${cx}" y="${Math.max(12,Math.min(H-bottom+12,ty))}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text)">${esc(it.txt)}</text>`;
+    }
+    labels+=`<text x="${cx}" y="${H-6}" text-anchor="middle" font-size="10" fill="${isSel?'var(--text)':'var(--muted)'}" font-weight="${isSel?700:400}">${esc(it.label)}</text>`;
+    // 點擊範圍比長條大
+    hits+=`<rect x="${left+slot*i}" y="0" width="${slot}" height="${H}" fill="transparent" style="cursor:pointer" onclick="pickMonth('${it.k}')"><title>${esc(it.label)}：${esc(it.txt)}</title></rect>`;
+  });
+  const axis=`<line x1="${left}" x2="${W-right}" y1="${base}" y2="${base}" stroke="var(--border2)" stroke-width="1"/>`;
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="近 12 個月長條圖">${axis}${bars}${labels}${hits}</svg>`;
+}
+
+function setRank(t){rankTab=t;render();}
+function rankList(reqs,key){
+  if(!reqs.length)return '<div class="empty">這個月沒有需求單</div>';
+  const g={};
+  reqs.forEach(r=>{
+    const k=(r[key]||'').trim()||'（未填）';
+    (g[k]=g[k]||{n:0,q:0,tw:0});
+    g[k].n++;g[k].q+=Number(r.quote)||0;g[k].tw+=Number(r.twQuote)||0;
+  });
+  let rows=Object.entries(g).map(([k,v])=>({k,...v})).sort((a,b)=>b.n-a.n||b.q-a.q);
+  // 最多列 8 個，其餘併成「其他」
+  if(rows.length>8){
+    const rest=rows.slice(7);
+    rows=rows.slice(0,7).concat([{k:`其他 ${rest.length} 個`,n:rest.reduce((s,x)=>s+x.n,0),q:rest.reduce((s,x)=>s+x.q,0),tw:rest.reduce((s,x)=>s+x.tw,0)}]);
+  }
+  const max=Math.max(...rows.map(r=>r.n));
+  return rows.map(r=>`
+    <div class="rk">
+      <div class="rk-n">${esc(r.k)}</div>
+      <div class="rk-v"><b>${r.n} 筆</b>　${yen(r.q)}</div>
+      <div class="rk-bar"><i style="width:${Math.max(2,r.n/max*100)}%"></i></div>
+    </div>`).join('');
+}
+
+function todoList(){
+  const R=DATA.reqs, F=DATA.freights;
+  const unpaid=R.filter(r=>r.pay==='未付款');
+  const unstarted=R.filter(r=>r.buy==='未開始');
+  const collecting=R.filter(r=>r.ship==='集貨中');
+  const clU=F.filter(f=>f.clientStatus==='未付款');
+  const coU=F.filter(f=>f.companyStatus==='未付款');
+  const sum=(a,k)=>a.reduce((s,x)=>s+(Number(x[k])||0),0);
+  const ic={
+    pay:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
+    cart:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>',
+    box:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>',
+    truck:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+  };
+  const row=(icon,l,sub,n,href)=>`<a class="todo" href="${href}" style="text-decoration:none;color:inherit">
+      <div class="todo-ic">${icon}</div>
+      <div class="todo-m"><div class="todo-l">${l}</div><div class="todo-s">${sub}</div></div>
+      <div class="todo-n">${n}</div></a>`;
+  return [
+    row(ic.pay,'需求單未付款',`共 ${yen(sum(unpaid,'quote'))}`,`${unpaid.length} 筆`,'/index.html'),
+    row(ic.cart,'購買未開始','還沒買的需求單',`${unstarted.length} 筆`,'/index.html'),
+    row(ic.box,'集貨中','等待出貨的需求單',`${collecting.length} 件`,'/index.html'),
+    row(ic.truck,'客戶運費未收',`共 ${twd(sum(clU,'clientAmount'))}`,`${clU.length} 筆`,'/freight.html'),
+    row(ic.truck,'公司運費未付',`共 ${twd(sum(coU,'companyAmount'))}`,`${coU.length} 筆`,'/freight.html'),
+  ].join('');
+}
+
+loadStats();
+</script>
+</body>
+</html>
