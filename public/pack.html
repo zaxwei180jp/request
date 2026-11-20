@@ -271,7 +271,7 @@ function resolveReqLabels(){
 async function loadRecords(silent=false){
   if(!silent) lbar(30);
   try{
-    const r=await fetch(API+'?action=pack_list');
+    const r=await fetch(API+'?action=pack_list'+freshQS('pack'));
     if(!silent) lbar(80);
     const d=await r.json();if(d.error)throw new Error(d.error);
     records=sortRecords(d);
@@ -439,6 +439,7 @@ async function saveNew(){
     showSaving('新增中…');
     const r=await fetch(API+'?action=pack_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
+    if(d.id) markFresh('pack',d.id,true);
     showSaving('同步列表中…');
     await reloadUntil(reloadList,()=>d.id?records.some(x=>x._pageId===d.id):records.some(x=>x.id===body.packId));
     hideSaving();closeAdd();window.scrollTo(0,0);toast(`✅ ${body.packId} 已新增`);
@@ -644,6 +645,7 @@ async function saveDetail(){
       const rr=await fetch(`${API}?action=pack_update_reqs&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reqIds:detailReqIds,addedIds,removedIds,packId:viewingId})});
       const dd=await rr.json();if(dd.error)throw new Error(dd.error);
     }
+    markFresh('pack',viewingId);
     showSaving('同步列表中…');
     const wantReqs=[...detailReqIds].sort().join(',');
     await reloadUntil(reloadList,()=>{
@@ -667,6 +669,7 @@ function cardClick(pageId){
 }
 async function reloadList(){await loadRecords(true);renderAll();}
 const BATCH_CFG={
+  kind:'pack',
   fields:[
     {key:'seal',label:'封箱狀態',short:'封箱',options:()=>schema['封箱狀態']?.options||[]},
     {key:'ship',label:'發貨狀態',short:'發貨',options:()=>schema['發貨狀態']?.options||[]},

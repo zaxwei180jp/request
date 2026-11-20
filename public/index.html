@@ -360,7 +360,7 @@ async function loadRecords(silent=false){
   if(!silent) lbar(30);
   _nextCursor=null; _hasMore=false;
   try{
-    const r=await fetch(API+'?action=list&limit=100');
+    const r=await fetch(API+'?action=list&limit=100'+freshQS('req'));
     if(!silent) lbar(80);
     const d=await r.json();
     if(d.error) throw new Error(d.error);
@@ -689,6 +689,7 @@ async function saveNew(){
     const res=await fetch(API+'?action=create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
     // 等列表確實出現這筆，才關閉並回到列表
+    if(d.id) markFresh('req',d.id,true);
     showSaving('同步列表中…');
     await reloadUntil(reloadList,()=>d.id?records.some(x=>x._pageId===d.id):records.some(x=>x.id===r.notionId));
     hideSaving();closeAdd();window.scrollTo(0,0);toast('✅ 已新增');
@@ -840,6 +841,7 @@ async function saveDetail(){
     showSaving('儲存中…');
     const res=await fetch(`${API}?action=update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
     const d=await res.json();if(d.error)throw new Error(d.error);
+    markFresh('req',viewingId);
     // 等列表確實是新的內容，才關閉並回到列表
     showSaving('同步列表中…');
     await reloadUntil(reloadList,()=>{
@@ -857,6 +859,7 @@ async function deleteRecord(){
     showSaving('刪除中…');
     const res=await fetch(`${API}?action=delete&id=${viewingId}`,{method:'DELETE'});
     const d=await res.json().catch(()=>({}));if(d.error)throw new Error(d.error);
+    markFresh('req',viewingId);
     showSaving('同步列表中…');
     const delId=viewingId;
     await reloadUntil(reloadList,()=>!records.some(x=>x._pageId===delId));
@@ -905,6 +908,7 @@ function cardClick(i){
 }
 async function reloadList(){await loadRecords(true);renderAll();loadStats();}
 const BATCH_CFG={
+  kind:'req',
   fields:[
     {key:'buy',label:'購買狀態',short:'購買',options:()=>getSchemaOptions(schema,'購買狀態')},
     {key:'pay',label:'付款狀態',short:'付款',options:()=>getSchemaOptions(schema,'付款狀態')},

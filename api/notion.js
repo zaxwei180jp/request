@@ -99,6 +99,33 @@ async function fetchPage(id) {
   return res.json();
 }
 
+/**
+ * Notion 的「資料庫查詢」有時會晚幾分鐘才出現剛新增或剛修改的頁面，
+ * 但「直接讀單一頁面」一定是最新的。
+ * 網頁會把自己剛新增／修改／刪除過的頁面 ID 放在 ?fresh= 傳來，
+ * 這裡逐頁直接讀取，補進或取代查詢結果；已刪除的就移除。
+ * allowInsertOld=false 時（需求單分頁列表），只補進 2 天內建立的頁面，避免舊資料插到最上面。
+ */
+async function mergeFresh(results, url, dbId, allowInsertOld = true) {
+  const ids = (url.searchParams.get('fresh') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+  if (!ids.length) return results;
+  const norm = id => String(id || '').replace(/-/g, '');
+  const pages = await Promise.all(ids.map(id => fetchPage(id).catch(() => null)));
+  const out = [...results];
+  let inserted = false;
+  for (const pg of pages) {
+    if (!pg || pg.object !== 'page') continue;
+    if (norm(pg.parent?.database_id) !== norm(dbId)) continue;   // 不是這個資料庫的頁面
+    const idx = out.findIndex(x => norm(x.id) === norm(pg.id));
+    if (pg.archived || pg.in_trash) { if (idx >= 0) out.splice(idx, 1); continue; }
+    if (idx >= 0) { out[idx] = pg; continue; }
+    const recent = Date.now() - new Date(pg.created_time).getTime() < 2 * 86400000;
+    if (allowInsertOld || recent) { out.push(pg); inserted = true; }
+  }
+  if (inserted && !allowInsertOld) out.sort((a, b) => new Date(b.created_time) - new Date(a.created_time));
+  return out;
+}
+
 // ── PJ條碼：依欄位名稱找（不寫死欄位 ID），依 Notion 欄位類型讀寫 ──
 const BARCODE_NAME = 'PJ條碼';
 function barcodeProp(props) {
@@ -333,7 +360,8 @@ export default async function handler(req) {
       ]);
 
       if (!reqRes.results) throw new Error(reqRes.message || 'Query failed');
-      const results = reqRes.results;
+      // 只在第一頁補上剛新增／修改的頁面
+      const results = cursor ? reqRes.results : await mergeFresh(reqRes.results, url, DB_REQ, false);
 
       // Build shipto map from full DB (one query instead of N queries)
       const shiptoMap = {};
@@ -499,7 +527,7 @@ export default async function handler(req) {
 
     // ── PACK LIST ───────────────────────────────────────────────
     if (action === 'pack_list') {
-      const results = await queryAll(DB_PACK, []);  // no sort to avoid timeout
+      const results = await mergeFresh(await queryAll(DB_PACK, []), url, DB_PACK);  // no sort to avoid timeout
       return json(results.map(page => {
         const p   = page.properties || {};
         const g   = id => val(prop(p, id));
@@ -710,7 +738,7 @@ export default async function handler(req) {
 
     // ── FREIGHT LIST ─────────────────────────────────────────────
     if (action === 'freight_list') {
-      const results = await queryAll(DB_FREIGHT);
+      const results = await mergeFresh(await queryAll(DB_FREIGHT), url, DB_FREIGHT);
 
       // Fetch full shipto DB + pack pages in parallel
       const packRelIds = collectRelIds(results, 'Dj%7Dq');

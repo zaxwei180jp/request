@@ -244,7 +244,7 @@ async function loadSchema(){
 async function loadRecords(silent=false){
   if(!silent) lbar(30);
   try{
-    const r=await fetch(API+'?action=freight_list');
+    const r=await fetch(API+'?action=freight_list'+freshQS('freight'));
     if(!silent) lbar(80);
     const d=await r.json();if(d.error)throw new Error(d.error);
     records=d;saveCache(d);
@@ -386,6 +386,7 @@ async function saveNew(){
     showSaving('新增中…');
     const r=await fetch(API+'?action=freight_create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
+    if(d.id) markFresh('freight',d.id,true);
     showSaving('同步列表中…');
     await reloadUntil(reloadList,()=>d.id?records.some(x=>x._pageId===d.id):records.some(x=>x.id===body.freightId));
     hideSaving();closeAdd();window.scrollTo(0,0);toast(`✅ ${body.freightId} 已新增`);
@@ -453,6 +454,7 @@ async function saveDetail(){
     showSaving('儲存中…');
     const r=await fetch(`${API}?action=freight_update&id=${viewingId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d=await r.json();if(d.error)throw new Error(d.error);
+    markFresh('freight',viewingId);
     showSaving('同步列表中…');
     await reloadUntil(reloadList,()=>{
       const x=records.find(y=>y._pageId===viewingId);
@@ -474,6 +476,7 @@ function cardClick(pageId){
 }
 async function reloadList(){await loadRecords(true);renderAll();}
 const BATCH_CFG={
+  kind:'freight',
   fields:[
     {key:'companyStatus',label:'公司狀態',short:'公司',options:()=>schema['公司狀態']?.options||[]},
     {key:'clientStatus',label:'客戶狀態',short:'客戶',options:()=>schema['客戶狀態']?.options||[]},

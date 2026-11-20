@@ -297,7 +297,7 @@ async function batchApply(key, val) {
   // 一筆一筆送，避免超過 Notion 每秒的請求上限
   for (let i = 0; i < ids.length; i++) {
     showSaving(`更新中 ${i + 1}/${ids.length}…`);
-    try { await BATCH_CFG.updateOne(ids[i], key, val); }
+    try { await BATCH_CFG.updateOne(ids[i], key, val); if (BATCH_CFG.kind) markFresh(BATCH_CFG.kind, ids[i]); }
     catch (e) { console.error('批次更新失敗', e); failed.push(ids[i]); }
   }
   showSaving('同步列表中…');
@@ -309,4 +309,27 @@ async function batchApply(key, val) {
   hideSaving();
   if (failed.length) alert(`有 ${failed.length} 筆更新失敗，已保留勾選，可以再試一次`);
   else toast(`✅ ${ids.length} 筆已更新`);
+}
+
+
+// ── 剛新增／修改的頁面（避免 Notion 查詢延遲造成列表少資料或顯示舊內容）──
+// 新增的記 24 小時，修改／刪除的記 30 分鐘；載入列表時把這些 ID 帶給後端直接讀取
+const FRESH_KEY = 'fresh_ids_v1';
+function _freshLoad() {
+  try { return JSON.parse(localStorage.getItem(FRESH_KEY) || '[]'); } catch (e) { return []; }
+}
+function markFresh(kind, id, isNew = false) {
+  if (!id) return;
+  try {
+    const now = Date.now();
+    const list = _freshLoad().filter(x => !(x.kind === kind && x.id === id) && x.exp > now);
+    list.push({ kind, id, exp: now + (isNew ? 86400000 : 1800000) });
+    localStorage.setItem(FRESH_KEY, JSON.stringify(list.slice(-60)));
+  } catch (e) {}
+}
+// 回傳要加在列表網址後面的 &fresh=...（沒有就回傳空字串）
+function freshQS(kind) {
+  const now = Date.now();
+  const ids = _freshLoad().filter(x => x.kind === kind && x.exp > now).map(x => x.id).slice(-20);
+  return ids.length ? '&fresh=' + encodeURIComponent(ids.join(',')) : '';
 }
