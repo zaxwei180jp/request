@@ -2,6 +2,7 @@ export const config = { runtime: 'edge' };
 
 const NOTION_TOKEN   = process.env.NOTION_TOKEN;
 const DB_REQ         = process.env.NOTION_DATABASE_ID;
+const PRODUCT_TOKEN  = process.env.NOTION_TOKEN_PRODUCT || process.env.NOTION_TOKEN;
 const DB_SHIPTO      = '2fd5bfd83387803fbb46e3dca0ea739b';
 const DB_PACK        = '2fe5bfd83387801ebc35f492744f41e1';
 const DB_FREIGHT     = '3035bfd833878045bfedea25f1f5bab6';
@@ -21,7 +22,7 @@ function prodProp(props, name) {
 let _prodSchema = null;
 async function prodCodeFilter(code, exact) {
   if (!_prodSchema) {
-    const r = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: nHeaders() });
+    const r = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: pHeaders() });
     const db = await r.json();
     if (db.object === 'error') throw new Error(`讀不到商品資料庫：${db.message}`);
     const k = Object.keys(db.properties || {}).find(n => _norm(n) === _norm(PROD_F.code));
@@ -39,6 +40,12 @@ const NOTION_VERSION = '2022-06-28';
 
 const nHeaders = () => ({
   'Authorization': `Bearer ${NOTION_TOKEN}`,
+  'Notion-Version': NOTION_VERSION,
+  'Content-Type': 'application/json; charset=utf-8',
+});
+// 商品資料庫在另一個 Notion 帳號：用自己的 token（沒設定就沿用 NOTION_TOKEN）
+const pHeaders = () => ({
+  'Authorization': `Bearer ${PRODUCT_TOKEN}`,
   'Notion-Version': NOTION_VERSION,
   'Content-Type': 'application/json; charset=utf-8',
 });
@@ -849,8 +856,8 @@ export default async function handler(req) {
     // ── PRODUCT SEARCH ──────────────────────────────────────────
     // ── PRODUCT DEBUG（檢查新商品資料庫連線與欄位）──────────────
     if (action === 'product_debug') {
-      const out = { 資料庫ID: DB_PRODUCT };
-      const r1 = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: nHeaders() });
+      const out = { 資料庫ID: DB_PRODUCT, 使用的token: process.env.NOTION_TOKEN_PRODUCT ? 'NOTION_TOKEN_PRODUCT（商品專用）' : 'NOTION_TOKEN（跟需求單同一組）' };
+      const r1 = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: pHeaders() });
       const db = await r1.json();
       if (db.object === 'error') {
         out.第1步_連線 = `失敗：${db.code} - ${db.message}`;
@@ -863,7 +870,7 @@ export default async function handler(req) {
         return [n, k ? `找到（${db.properties[k].type}）` : '找不到'];
       }));
       const r2 = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
-        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 3 }),
+        method: 'POST', headers: pHeaders(), body: JSON.stringify({ page_size: 3 }),
       });
       const q = await r2.json();
       if (!q.results) { out.第4步_讀資料 = `失敗：${q.message}`; return json(out); }
@@ -885,7 +892,7 @@ export default async function handler(req) {
       try { filter = await prodCodeFilter(code, false); }
       catch (e) { return json({ error: e.message }, 500); }
       const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
-        method: 'POST', headers: nHeaders(),
+        method: 'POST', headers: pHeaders(),
         body: JSON.stringify({ page_size: 5, filter }),
       });
       const data = await res.json();
@@ -945,7 +952,7 @@ export default async function handler(req) {
       await Promise.all(codes.map(async code => {
         try {
           const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
-            method: 'POST', headers: nHeaders(),
+            method: 'POST', headers: pHeaders(),
             body: JSON.stringify({ page_size: 1, filter: await prodCodeFilter(code, true) }),
           });
           const data = await res.json();
