@@ -2,7 +2,10 @@ export const config = { runtime: 'edge' };
 
 const NOTION_TOKEN   = process.env.NOTION_TOKEN;
 const DB_REQ         = process.env.NOTION_DATABASE_ID;
-const PRODUCT_TOKEN  = process.env.NOTION_TOKEN_PRODUCT || process.env.NOTION_TOKEN;
+// 自動去掉前後空白、換行、引號（貼上時常多帶）
+const _cleanToken = t => String(t || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
+const RAW_PRODUCT_TOKEN = process.env.NOTION_TOKEN_PRODUCT || '';
+const PRODUCT_TOKEN  = _cleanToken(RAW_PRODUCT_TOKEN) || process.env.NOTION_TOKEN;
 const DB_SHIPTO      = '2fd5bfd83387803fbb46e3dca0ea739b';
 const DB_PACK        = '2fe5bfd83387801ebc35f492744f41e1';
 const DB_FREIGHT     = '3035bfd833878045bfedea25f1f5bab6';
@@ -857,6 +860,19 @@ export default async function handler(req) {
     // ── PRODUCT DEBUG（檢查新商品資料庫連線與欄位）──────────────
     if (action === 'product_debug') {
       const out = { 資料庫ID: DB_PRODUCT, 使用的token: process.env.NOTION_TOKEN_PRODUCT ? 'NOTION_TOKEN_PRODUCT（商品專用）' : 'NOTION_TOKEN（跟需求單同一組）' };
+      // token 檢查（不顯示完整內容，只顯示開頭和長度）
+      if (RAW_PRODUCT_TOKEN) {
+        const raw = RAW_PRODUCT_TOKEN, t = PRODUCT_TOKEN;
+        out.token檢查 = {
+          開頭: t.slice(0, 4) + '…',
+          長度: t.length,
+          前後有空白或換行: raw !== raw.trim() ? '有（已自動去掉）' : '沒有',
+          有引號: /["'`]/.test(raw) ? '有（已自動去掉）' : '沒有',
+          中間有空白: /\s/.test(t) ? '有（這樣一定不對）' : '沒有',
+          格式: /^(ntn_|secret_)/.test(t) ? '開頭正確' : '開頭不是 ntn_ 或 secret_，可能複製錯了',
+          跟需求單token一樣: t === String(process.env.NOTION_TOKEN || '').trim() ? '一樣（要填商品帳號那組）' : '不一樣',
+        };
+      }
       const r1 = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: pHeaders() });
       const db = await r1.json();
       if (db.object === 'error') {
