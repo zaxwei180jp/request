@@ -5,7 +5,12 @@ const DB_REQ         = process.env.NOTION_DATABASE_ID;
 const DB_SHIPTO      = '2fd5bfd83387803fbb46e3dca0ea739b';
 const DB_PACK        = '2fe5bfd83387801ebc35f492744f41e1';
 const DB_FREIGHT     = '3035bfd833878045bfedea25f1f5bab6';
-const DB_PRODUCT     = '3465bfd833878052a7b2edc45d265f50';
+const DB_PRODUCT     = '413d80b35c5380abab3ddfd2b3fcbe26';   // 新商品資料庫（2026/11 更換）
+// 商品資料庫欄位名稱（用名稱對應，不寫死欄位 ID）
+const PROD_F = { code: '商品編號', name: '商品名稱', price: '現場價錢', weight: '重量' };
+const prodText = p => (p?.rich_text || p?.title || []).map(t => t.plain_text).join('').trim();
+const prodPrice = p => Math.round(Number(p?.number) || 0);                 // 整數
+const prodWeight = p => Math.round((Number(p?.number) || 0) * 100) / 100;  // 小數點第二位，四捨五入
 const NOTION_VERSION = '2022-06-28';
 
 const nHeaders = () => ({
@@ -821,13 +826,13 @@ export default async function handler(req) {
     if (action === 'product_search') {
       const code = url.searchParams.get('code') || '';
       if (!code) return json([]);
-      // Search by idnumber (gFkD rich_text) field
+      // 依新商品資料庫的「商品編號」（文字欄）搜尋
       const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
         method: 'POST', headers: nHeaders(),
         body: JSON.stringify({
           page_size: 5,
           filter: {
-            property: 'idnumber',
+            property: PROD_F.code,
             rich_text: { contains: code }
           }
         }),
@@ -836,15 +841,11 @@ export default async function handler(req) {
       if (!data.results) return json([]);
       const results = data.results.map(page => {
         const props  = page.properties || {};
-        const titleP = Object.values(props).find(v => v.type === 'title');  // tname
-        const priceP = Object.values(props).find(v => v.id === 'tQPF');     // jprice
-        const idP    = Object.values(props).find(v => v.id === 'gFkD');     // idnumber
-        const weightP = Object.values(props).find(v => v.id === 'goDF');
         return {
-          code:   idP?.rich_text?.[0]?.plain_text || '',
-          name:   titleP?.title?.[0]?.plain_text || '',
-          price:  priceP?.number ?? 0,
-          weight: weightP?.number ?? 0,
+          code:   prodText(props[PROD_F.code]),
+          name:   prodText(props[PROD_F.name]),
+          price:  prodPrice(props[PROD_F.price]),
+          weight: prodWeight(props[PROD_F.weight]),
         };
       }).filter(r => r.code);
       return json(results);
@@ -894,13 +895,12 @@ export default async function handler(req) {
         try {
           const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
             method: 'POST', headers: nHeaders(),
-            body: JSON.stringify({ page_size: 1, filter: { property: 'idnumber', rich_text: { equals: code } } }),
+            body: JSON.stringify({ page_size: 1, filter: { property: PROD_F.code, rich_text: { equals: code } } }),
           });
           const data = await res.json();
           const page = data.results?.[0];
           if (page) {
-            const weightP = Object.values(page.properties).find(v => v.id === 'goDF');
-            codeMap[code] = weightP?.number ?? 0;
+            codeMap[code] = prodWeight(page.properties[PROD_F.weight]);
           }
         } catch(e) { codeMap[code] = 0; }
       }));
