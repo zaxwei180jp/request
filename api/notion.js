@@ -9,6 +9,30 @@ const DB_PRODUCT     = '413d80b35c5380abab3ddfd2b3fcbe26';   // 新商品資料�
 // 商品資料庫欄位名稱（用名稱對應，不寫死欄位 ID）
 const PROD_F = { code: '商品編號', name: '商品名稱', price: '現場價錢', weight: '重量' };
 const prodText = p => (p?.rich_text || p?.title || []).map(t => t.plain_text).join('').trim();
+const _norm = n => String(n || '').replace(/\s/g, '');
+// 依名稱找欄位（容忍前後或中間多了空白）
+function prodProp(props, name) {
+  if (!props) return undefined;
+  if (props[name]) return props[name];
+  const k = Object.keys(props).find(n => _norm(n) === _norm(name));
+  return k ? props[k] : undefined;
+}
+// 讀新商品資料庫的欄位設定，找出「商品編號」的實際名稱與類型（快取）
+let _prodSchema = null;
+async function prodCodeFilter(code, exact) {
+  if (!_prodSchema) {
+    const r = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: nHeaders() });
+    const db = await r.json();
+    if (db.object === 'error') throw new Error(`讀不到商品資料庫：${db.message}`);
+    const k = Object.keys(db.properties || {}).find(n => _norm(n) === _norm(PROD_F.code));
+    if (!k) throw new Error(`商品資料庫找不到「${PROD_F.code}」欄位，現有欄位：${Object.keys(db.properties || {}).join('、')}`);
+    _prodSchema = { name: k, type: db.properties[k].type };
+  }
+  const { name, type } = _prodSchema;
+  const t = type === 'title' ? 'title' : type === 'number' ? 'number' : 'rich_text';
+  if (t === 'number') return { property: name, number: { equals: Number(code) || 0 } };
+  return { property: name, [t]: exact ? { equals: code } : { contains: code } };
+}
 const prodPrice = p => Math.round(Number(p?.number) || 0);                 // 整數
 const prodWeight = p => Math.round((Number(p?.number) || 0) * 100) / 100;  // 小數點第二位，四捨五入
 const NOTION_VERSION = '2022-06-28';
@@ -823,29 +847,56 @@ export default async function handler(req) {
     }
 
     // ── PRODUCT SEARCH ──────────────────────────────────────────
+    // ── PRODUCT DEBUG（檢查新商品資料庫連線與欄位）──────────────
+    if (action === 'product_debug') {
+      const out = { 資料庫ID: DB_PRODUCT };
+      const r1 = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}`, { headers: nHeaders() });
+      const db = await r1.json();
+      if (db.object === 'error') {
+        out.第1步_連線 = `失敗：${db.code} - ${db.message}`;
+        return json(out);
+      }
+      out.第1步_連線 = `成功（資料庫名稱：${db.title?.map(t => t.plain_text).join('') || '未命名'}）`;
+      out.第2步_欄位 = Object.entries(db.properties || {}).map(([n, v]) => `${JSON.stringify(n)}（${v.type}）`);
+      out.第3步_需要的欄位 = Object.fromEntries(Object.entries(PROD_F).map(([, n]) => {
+        const k = Object.keys(db.properties || {}).find(x => _norm(x) === _norm(n));
+        return [n, k ? `找到（${db.properties[k].type}）` : '找不到'];
+      }));
+      const r2 = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
+        method: 'POST', headers: nHeaders(), body: JSON.stringify({ page_size: 3 }),
+      });
+      const q = await r2.json();
+      if (!q.results) { out.第4步_讀資料 = `失敗：${q.message}`; return json(out); }
+      out.第4步_讀資料 = q.results.length ? `成功，前 ${q.results.length} 筆：` : '資料庫是空的';
+      out.前幾筆 = q.results.map(pg => ({
+        商品編號: prodText(prodProp(pg.properties, PROD_F.code)),
+        商品名稱: prodText(prodProp(pg.properties, PROD_F.name)),
+        現場價錢: prodProp(pg.properties, PROD_F.price)?.number ?? null,
+        重量:     prodProp(pg.properties, PROD_F.weight)?.number ?? null,
+      }));
+      return json(out);
+    }
+
     if (action === 'product_search') {
       const code = url.searchParams.get('code') || '';
       if (!code) return json([]);
       // 依新商品資料庫的「商品編號」（文字欄）搜尋
+      let filter;
+      try { filter = await prodCodeFilter(code, false); }
+      catch (e) { return json({ error: e.message }, 500); }
       const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
         method: 'POST', headers: nHeaders(),
-        body: JSON.stringify({
-          page_size: 5,
-          filter: {
-            property: PROD_F.code,
-            rich_text: { contains: code }
-          }
-        }),
+        body: JSON.stringify({ page_size: 5, filter }),
       });
       const data = await res.json();
-      if (!data.results) return json([]);
+      if (!data.results) return json({ error: `商品資料庫查詢失敗：${data.message || '未知錯誤'}` }, 500);
       const results = data.results.map(page => {
         const props  = page.properties || {};
         return {
-          code:   prodText(props[PROD_F.code]),
-          name:   prodText(props[PROD_F.name]),
-          price:  prodPrice(props[PROD_F.price]),
-          weight: prodWeight(props[PROD_F.weight]),
+          code:   prodText(prodProp(props, PROD_F.code)),
+          name:   prodText(prodProp(props, PROD_F.name)),
+          price:  prodPrice(prodProp(props, PROD_F.price)),
+          weight: prodWeight(prodProp(props, PROD_F.weight)),
         };
       }).filter(r => r.code);
       return json(results);
@@ -895,12 +946,12 @@ export default async function handler(req) {
         try {
           const res = await nFetch(`https://api.notion.com/v1/databases/${DB_PRODUCT}/query`, {
             method: 'POST', headers: nHeaders(),
-            body: JSON.stringify({ page_size: 1, filter: { property: PROD_F.code, rich_text: { equals: code } } }),
+            body: JSON.stringify({ page_size: 1, filter: await prodCodeFilter(code, true) }),
           });
           const data = await res.json();
           const page = data.results?.[0];
           if (page) {
-            codeMap[code] = prodWeight(page.properties[PROD_F.weight]);
+            codeMap[code] = prodWeight(prodProp(page.properties, PROD_F.weight));
           }
         } catch(e) { codeMap[code] = 0; }
       }));

@@ -624,7 +624,15 @@ async function searchProduct(code){
     try{
       const r=await fetch(`${API}?action=product_search&code=${encodeURIComponent(code)}`);
       const items=await r.json();
-      if(!items.length){suggest.classList.remove('show');return;}
+      // 商品資料庫有錯誤時，在選單裡顯示原因（不再默默沒反應）
+      if(items&&items.error){
+        suggest.innerHTML=`<div class="prod-item" style="cursor:default;color:var(--red);font-size:13px;line-height:1.5">${items.error}</div>`;
+        suggest.dataset.items='[]';suggest.classList.add('show');return;
+      }
+      if(!Array.isArray(items)||!items.length){
+        suggest.innerHTML=`<div class="prod-item" style="cursor:default;color:var(--muted);font-size:13px">商品資料庫找不到「${code}」</div>`;
+        suggest.dataset.items='[]';suggest.classList.add('show');return;
+      }
       suggest.innerHTML=items.map((p,i)=>`
         <div class="prod-item" data-idx="${i}">
           <div class="prod-code">${p.code}</div>
@@ -633,7 +641,10 @@ async function searchProduct(code){
         </div>`).join('');
       suggest.dataset.items=JSON.stringify(items);
       suggest.classList.add('show');
-    }catch(e){}
+    }catch(e){
+      suggest.innerHTML=`<div class="prod-item" style="cursor:default;color:var(--red);font-size:13px">查詢失敗：${e.message}</div>`;
+      suggest.dataset.items='[]';suggest.classList.add('show');
+    }
   },400);
 }
 
